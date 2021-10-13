@@ -18,6 +18,11 @@ fifa19_init <- read.csv(file = "../final_fifa_stat.csv")
 fifa19_final <- fifa19_init[-c(1)]
 fifa19_cor <- fifa19_init[-c(1, 9, 10, 11, 12, 17, 18, 19, 20, 21, 22, 23, 24)]
 fifa19_stat <- fifa19_init[c(17, 18, 19, 20, 21, 22)]
+fifa19_bivarie <- as.data.frame(fifa19_init[-c(1,2,17,18,19,20,21,22,23,24)])
+
+names_quantitatives <- list("Age", "Overall", "Potential", "Value", "Wage", "Contract.Valid.Until", "Height", "Weight", "Release.Clause") 
+names_qualitatives <- list("Nationality", "Preferred.Foot", "Weak.Foot", "Skill.Moves", "Position")
+
 students <- read.csv(file = "../students.csv")
 sleep <- read.csv(file = "../sleepStudy.csv")
 secteur <- read.csv(file = "../secteursActivite.csv")
@@ -48,32 +53,32 @@ ui <- dashboardPage(
   dashboardHeader(title = "MyPage"),
   dashboardSidebar(
     sidebarMenu(
-      #Création des onglets, le champ tabName est son identifiant et le champ icon permet d'ajouter des icones deja def
+      #CrÃ©ation des onglets, le champ tabName est son identifiant et le champ icon permet d'ajouter des icones deja def
       menuItem("Page d'accueil",
                tabName = "accueil",
                icon = icon("home")),
       menuItem(
-        "Répartition des joueurs dans le monde",
+        "RÃ©partition des joueurs dans le monde",
         tabName = "repartition",
         icon = icon("globe-europe")
       ),
       menuItem(
-        "Page pour variables univarié",
+        "Page pour variables univariÃ©",
         tabName = "univarie",
         icon = icon("poll")
       ),
       menuItem(
-        "Page pour variables bivarié",
+        "Page pour variables bivariÃ©",
         tabName = "bivarie",
         icon = icon("poll")
       ),
       menuItem(
-        "Page de prédiction",
+        "Page de prÃ©diction",
         tabName = "prediction",
         icon = icon("poll")
       ),
       menuItem(
-        "Page de corrélation",
+        "Page de corrÃ©lation",
         tabName = "correlation",
         icon = icon("poll")
       )
@@ -89,8 +94,8 @@ ui <- dashboardPage(
         sidebarLayout(
           sidebarPanel(
             width = 4,
-            h2("Présentation", align = "center"),
-            p("Voici notre page présentant nos résultats et nos modèles", align = "center"),
+            h2("PrÃ©sentation", align = "center"),
+            p("Voici notre page prÃ©sentant nos rÃ©sultats et nos modÃ¨les", align = "center"),
             br(),
             HTML(
               '<center><img src="https://lh4.googleusercontent.com/NcyHaUFCg7TiSIZR391geNW-BXJUGd0TGZ-gsMezwFwPt9vTPIdyMWvWeG06w27f_M682uxnrxeMLJArGDIsHPWww4o4H6ZPGOo8_Xr3FM5bIq99irwLTr5D7P70Owmjiw=w1280" width="300"
@@ -117,13 +122,13 @@ ui <- dashboardPage(
             br(),
             p(
               "For an introduction and live examples, visit the ",
-              a("datasets de départ",
+              a("datasets de dÃ©part",
                 href = "https://www.kaggle.com/karangadiya/fifa19/download")
             ),
             br(),
             h2("Features"),
             p(
-              "- Build useful web applications with only a few lines of code—no JavaScript required."
+              "- Build useful web applications with only a few lines of codeâno JavaScript required."
             ),
             p(
               "- Shiny applications are automatically 'live' in the same way that ",
@@ -198,18 +203,23 @@ ui <- dashboardPage(
       
       # Visualisation bivarie
       tabItem(tabName = "bivarie",
-              fluidRow(column(
-                5,
-                offset = 7,
-                h1("Test 2"),
-                fileInput(
-                  inputId = "dataFile2",
-                  label = "Choose CSV File",
-                  accept = c("text/plain", ".csv"),
-                  buttonLabel = "Browse...",
-                  placeholder = "No file selected"
-                )
-              ))),
+              titlePanel("Static Panel 2"),
+              sidebarLayout(
+                sidebarPanel(h1("Dataset"),
+                             shiny::selectInput(
+                               inputId = "choice_bivar_1",
+                               label = "Feature 1",
+                               choices = colnames(fifa19_bivarie )  #      [-c(input$choice_bivar2)])
+                             ),
+                             shiny::selectInput(
+                               inputId = "choice_bivar_2",
+                               label = "Feature 2",
+                               choices = colnames(fifa19_bivarie) #         [-c(input$choice_bivar1)])
+                             ))
+                ,
+                mainPanel(fluidRow(plotOutput(outputId = "plotBivarie")))
+              )
+      ),
       
       # Prediction
       tabItem(tabName = "prediction",
@@ -294,11 +304,11 @@ server <- function(input, output) {
       cglwd = 0.8,
       # Personnaliser l'axe
       axislabcol = "grey",
-      # Étiquettes des variables
+      # Ãtiquettes des variables
       vlcex = vlcex,
       vlabels = vlabels,
       caxislabels = caxislabels,
-      title = title,
+      title = title
     )
   }
   
@@ -312,23 +322,71 @@ server <- function(input, output) {
       type = "h",
       col = "green4",
       xlab = "Age",
-      ylab = "Number of player",
-      main = "Distribution des effectifs pour l'âge"
+      ylab = "Effectifs",
+      main = "Distribution des effectifs pour l'Ã¢ge"
     )
   })
   
-  output$distPlot4 <- renderPlot({
-    plot(
-      table(overall),
-      type = "h",
-      col = "green4",
-      xlab = "Overall",
-      ylab = "Number of player",
-      main = "Distribution des notes"
-    )
+  
+  
+  bivarie <- reactiveValues()
+  
+  observe({
+    if ((input$choice_bivar_1 %in% names_quantitatives ) && ( input$choice_bivar_2 %in% names_quantitatives )) {
+      bivarie$type <- 'quant_quant'
+    }
+    else if ((input$choice_bivar_1 %in% names_qualitatives ) && ( input$choice_bivar_2 %in% names_quantitatives )) {
+      bivarie$type <- 'quali_quant'
+    }
+    else if ((input$choice_bivar_1 %in% names_quantitatives ) && ( input$choice_bivar_2 %in% names_qualitatives ) ) 
+    {
+      bivarie$type <- 'quant_quali' 
+    }
+    else {
+      bivarie$type <- 'quali_quali'
+    }
   })
   
-  output$distPlot5 <- renderPlot({
+  data <- eventReactive(input$go, {
+    inFile <- input$file1
+    if (is.null(inFile)) return(NULL)
+    read.csv(inFile$datapath, header = TRUE)
+  })
+  
+  output$plotBivarie <- renderPlot({
+    
+    options(scipen=999)
+    x.var = input$choice_bivar_1; 
+    y.var = input$choice_bivar_2;
+    
+    if ( bivarie$type == 'quant_quant') 
+      {
+      
+        #plot(x = fifa19_bivarie[, x.var], y = fifa19_bivarie[, y.var], col = "blue" ) 
+        
+        scatter_plot_quanti = ggplot(fifa19_bivarie, aes(x=x.var, y=y.var)) + geom_point(size=2, shape=23)
+        plot(scatter_plot_quanti)
+      
+      }
+    else if ( bivarie$type == 'quant_quali') 
+      {
+      boxplot(fifa19_bivarie[, x.var] ~ fifa19_bivarie[, y.var] , col="grey", xlab = y.var, ylab = x.var)
+      }
+    else if ( bivarie$type == 'quali_quant') 
+      {
+      boxplot(fifa19_bivarie[, y.var] ~ fifa19_bivarie[, x.var] , col="grey", xlab = x.var, ylab = y.var)
+      }
+    else
+      {
+      barplot_quali_quali = ggplot(fifa19_bivarie, aes(x = Weak.Foot, fill = Skill.Moves)) + geom_bar(position = "fill")
+      plot(barplot_quali_quali)
+      }
+    
+    options(scipen=0)
+
+  })
+  
+  output$distPlot2 <- renderPlot({
     ggplot(fifa19_final, aes(Overall)) + geom_boxplot()
   })
   
