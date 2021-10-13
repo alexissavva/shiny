@@ -134,11 +134,11 @@ ui <- dashboardPage(
         )
       ),
       tabItem(tabName = "repartition",
-        mainPanel(
-          fluidRow(
-            plotOutput(outputId = "map")
-          )
-        )
+              mainPanel(
+                fluidRow(
+                  plotOutput(outputId = "map")
+                )
+              )
       ),
       
       #Visualisation univarie
@@ -163,13 +163,13 @@ ui <- dashboardPage(
             ),
             shiny::selectInput(
               inputId = "dataset_players",
-              label = "Select Player (Orange)",
+              label = "Select Player",
               choices = name_player
             ),
             checkboxInput("compare_player", "Compare players", FALSE),
             shiny::selectInput(
               inputId = "player2",
-              label = "Other player (Blue)",
+              label = "Other player",
               choices = name_player
             )
           ),
@@ -178,7 +178,8 @@ ui <- dashboardPage(
             fluidRow(plotOutput(outputId = "distPlot")),
             fluidRow(plotOutput(outputId = "distPlot2")),
             fluidRow(plotOutput(outputId = "distPlot3")),
-            fluidRow(plotOutput(outputId = "distPlot4"))
+            fluidRow(plotOutput(outputId = "distPlot4")),
+            fluidRow(plotOutput(outputId = "distPlot5")),
           )
         )
       ),
@@ -269,18 +270,8 @@ ui <- dashboardPage(
 server <- function(input, output) {
   age <- fifa19_final[c(2)]
   rv <- reactiveValues()
-  overall <- fifa19_final[c(4)]
-  
-  dat <- reactive({
-    test <-
-      fifa19_final[fifa19_final$Overall %in% seq(
-        from = min(input$overall),
-        to = max(input$overall),
-        by = 1
-      ), ]
-    print(test)
-    test
-  })
+  overall <- fifa19_final[c('Overall')]
+  over_slider <- fifa19_final[c('Overall','Age')]
   
   create_beautiful_radarchart <- function(data,
                                           color = "#F5A42F",
@@ -321,13 +312,29 @@ server <- function(input, output) {
       type = "h",
       col = "green4",
       xlab = "Age",
-      ylab = "Effectifs",
+      ylab = "Number of player",
       main = "Distribution des effectifs pour l'âge"
     )
   })
   
-  output$distPlot2 <- renderPlot({
+  output$distPlot4 <- renderPlot({
+    plot(
+      table(overall),
+      type = "h",
+      col = "green4",
+      xlab = "Overall",
+      ylab = "Number of player",
+      main = "Distribution des notes"
+    )
+  })
+  
+  output$distPlot5 <- renderPlot({
     ggplot(fifa19_final, aes(Overall)) + geom_boxplot()
+  })
+  
+  output$distPlot2 <- renderPlot({
+    updated_data <- over_slider[over_slider$Overall>=input$overall[1]&over_slider$Overall<=input$overall[2],]
+    plot(updated_data$Overall,updated_data$Age,xlab = "Overall", ylab = "Age of player", main = "test")
   })
   
   output$map <- renderPlot({
@@ -347,12 +354,12 @@ server <- function(input, output) {
                                 addLegend = F,
                                 mapTitle = "",
                                 border = NA)
-    do.call(addMapLegendBoxes, c(mapParams,
-                                 x = 'bottom',
-                                 title = "No. of visits",
-                                 horiz = TRUE,
-                                 bg = "transparent",
-                                 bty = "n"))
+    # do.call(addMapLegendBoxes, c(mapParams,
+    #                              x = 'bottom',
+    #                              title = "No. of visits",
+    #                              horiz = TRUE,
+    #                              bg = "transparent",
+    #                              bty = "n"))
   })
   
   output$distPlot <- renderPlot({
@@ -414,6 +421,7 @@ server <- function(input, output) {
     plotly::ggplotly(g)
     
   })
+  
 }
 # Association interface & commandes
 shinyApp(ui = ui, server = server)
