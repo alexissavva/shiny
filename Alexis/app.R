@@ -183,7 +183,8 @@ ui <- dashboardPage(
             fluidRow(plotOutput(outputId = "distPlot")),
             fluidRow(plotOutput(outputId = "distPlot2")),
             fluidRow(plotOutput(outputId = "distPlot3")),
-            fluidRow(plotOutput(outputId = "distPlot4"))
+            fluidRow(plotOutput(outputId = "distPlot4")),
+            fluidRow(plotOutput(outputId = "distPlot5"))
           )
         )
       ),
@@ -280,6 +281,8 @@ server <- function(input, output) {
   age <- fifa19_final[c(2)]
   rv <- reactiveValues()
   overall <- fifa19_final[c(4)]
+  over_slider <- fifa19_final[c('Overall','Age')]
+  
   
   dat <- reactive({
     test <-
@@ -336,7 +339,20 @@ server <- function(input, output) {
     )
   })
   
+  output$distPlot4 <- renderPlot({
+    plot(
+      table(overall),
+      type = "h",
+      col = "green4",
+      xlab = "Overall",
+      ylab = "Number of player",
+      main = "Distribution des notes"
+    )
+  })
   
+  output$distPlot5 <- renderPlot({
+    ggplot(fifa19_final, aes(Overall)) + geom_boxplot()
+  })
   
   bivarie <- reactiveValues()
   
@@ -354,12 +370,6 @@ server <- function(input, output) {
     else {
       bivarie$type <- 'quali_quali'
     }
-  })
-  
-  data <- eventReactive(input$go, {
-    inFile <- input$file1
-    if (is.null(inFile)) return(NULL)
-    read.csv(inFile$datapath, header = TRUE)
   })
   
   output$plotBivarie <- renderPlot({
@@ -396,7 +406,8 @@ server <- function(input, output) {
   })
   
   output$distPlot2 <- renderPlot({
-    ggplot(fifa19_final, aes(Overall)) + geom_boxplot()
+    updated_data <- over_slider[over_slider$Overall>=input$overall[1]&over_slider$Overall<=input$overall[2],]
+    plot(updated_data$Overall,updated_data$Age,xlab = "Overall", ylab = "Age of player", main = "test")
   })
   
   output$map <- renderPlot({
@@ -416,12 +427,12 @@ server <- function(input, output) {
                                 addLegend = F,
                                 mapTitle = "",
                                 border = NA)
-    do.call(addMapLegendBoxes, c(mapParams,
-                                 x = 'bottom',
-                                 title = "No. of visits",
-                                 horiz = TRUE,
-                                 bg = "transparent",
-                                 bty = "n"))
+    # do.call(addMapLegendBoxes, c(mapParams,
+    #                              x = 'bottom',
+    #                              title = "No. of visits",
+    #                              horiz = TRUE,
+    #                              bg = "transparent",
+    #                              bty = "n"))
   })
   
   output$distPlot <- renderPlot({
