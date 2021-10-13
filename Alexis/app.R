@@ -11,12 +11,12 @@ library(rgdal)
 library(dplyr)
 library(leaflet)
 library(ggplot2)
+library(rworldmap)
 
 
 fifa19_init <- read.csv(file = "../final_fifa_stat.csv")
 fifa19_final <- fifa19_init[-c(1)]
-fifa19_cor <-
-  fifa19_init[-c(1, 9, 10, 11, 12, 17, 18, 19, 20, 21, 22, 23, 24)]
+fifa19_cor <- fifa19_init[-c(1, 9, 10, 11, 12, 17, 18, 19, 20, 21, 22, 23, 24)]
 fifa19_stat <- fifa19_init[c(17, 18, 19, 20, 21, 22)]
 students <- read.csv(file = "../students.csv")
 sleep <- read.csv(file = "../sleepStudy.csv")
@@ -24,6 +24,7 @@ secteur <- read.csv(file = "../secteursActivite.csv")
 result <- read.csv(file = "../resultatsDEUG.csv")
 chien <- read.csv(file = "../chiens.csv")
 exemple <- read.csv(file = "../exempleNuages.csv")
+world_map <- read.csv(file = "country.csv",sep = ";")
 
 name_player <- fifa19_final[c(1)]
 name_player <- head(name_player, 25)
@@ -330,32 +331,28 @@ server <- function(input, output) {
   })
   
   output$map <- renderPlot({
-    world_spdf <- readOGR(
-      dsn = paste0(getwd(), "/DATA/world_shape_file/") ,
-      layer = "TM_WORLD_BORDERS_SIMPL-0.3",
-      verbose = FALSE
-    )
-    
-    # Clean the data object
-    world_spdf@data$POP2005[which(world_spdf@data$POP2005 == 0)] = NA
-    world_spdf@data$POP2005 <-
-      as.numeric(as.character(world_spdf@data$POP2005)) / 1000000 %>% round(2)
-    
-    
-    # Create a color palette for the map:
-    mypalette <-
-      colorNumeric(
-        palette = "viridis",
-        domain = world_spdf@data$POP2005,
-        na.color = "transparent"
-      )
-    mypalette(c(45, 43))
-    
-    # Basic choropleth with leaflet?
-    m <- leaflet(world_spdf) %>%
-      addTiles()  %>%
-      setView(lat = 10, lng = 0 , zoom = 2) %>%
-      addPolygons(fillColor = ~ mypalette(POP2005), stroke = FALSE)
+    visitedMap <- joinCountryData2Map(world_map, 
+                                      joinCode = "NAME",
+                                      nameJoinColumn = "country",
+                                      verbose = TRUE)
+    mapParams <- mapCountryData(visitedMap, 
+                                nameColumnToPlot="Freq",
+                                oceanCol = "azure2",
+                                catMethod = "categorical",
+                                missingCountryCol = gray(.8),
+                                colourPalette = c("coral",
+                                                  "coral2",
+                                                  "coral3", "orangered", 
+                                                  "orangered3", "orangered4"),
+                                addLegend = F,
+                                mapTitle = "",
+                                border = NA)
+    do.call(addMapLegendBoxes, c(mapParams,
+                                 x = 'bottom',
+                                 title = "No. of visits",
+                                 horiz = TRUE,
+                                 bg = "transparent",
+                                 bty = "n"))
   })
   
   output$distPlot <- renderPlot({
@@ -399,7 +396,7 @@ server <- function(input, output) {
       )
       legend(
         x = "right",
-        legend = rownames(stat_players[-c(1, 2), ]),
+        legend = rownames(stat_players[-c(1, 2),]),
         horiz = TRUE,
         bty = "n",
         pch = 20 ,

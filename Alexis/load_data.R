@@ -304,10 +304,12 @@ map2 <- read.csv(file = "country.csv",sep = ";")
 visitedMap <- joinCountryData2Map(map2, 
                                   joinCode = "NAME",
                                   nameJoinColumn = "country",
+                                  zoomControl: TRUE,
                                   verbose = TRUE)
 mapParams <- mapCountryData(visitedMap, 
                             nameColumnToPlot="Freq",
                             oceanCol = "azure2",
+                            zoomControl: TRUE,
                             catMethod = "categorical",
                             missingCountryCol = gray(.8),
                             colourPalette = c("coral",
@@ -318,4 +320,13 @@ mapParams <- mapCountryData(visitedMap,
                             mapTitle = "",
                             border = NA)
 # add legend and display map
+
+# G1 <- gvisGeoMap(map2,locationvar='country',numvar='Freq',options=list(dataMode='regions'))
+# 
+# plot(G1)
+
+library(maptools)
+data(wrld_simpl)
+myCountries = wrld_simpl@data$NAME %in% c("Australia", "United Kingdom", "Germany", "United States", "Sweden", "Netherlands", "New Zealand")
+plot(wrld_simpl, col = c(gray(.80), "red")[myCountries+1])
 
