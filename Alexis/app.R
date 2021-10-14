@@ -383,7 +383,7 @@ server <- function(input, output) {
       
         #plot(x = fifa19_bivarie[, x.var], y = fifa19_bivarie[, y.var], col = "blue" ) 
         
-        scatter_plot_quanti = ggplot(fifa19_bivarie, aes(x=x.var, y=y.var)) + geom_point(size=2, shape=23)
+        scatter_plot_quanti = ggplot(fifa19_bivarie, aes_string(x=x.var, y=y.var)) + geom_point(size=2, shape=23)
         plot(scatter_plot_quanti)
       
       }
