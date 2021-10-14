@@ -139,11 +139,7 @@ ui <- dashboardPage(
         )
       ),
       tabItem(tabName = "repartition",
-        mainPanel(
-          fluidRow(
-            plotOutput(outputId = "map")
-          )
-        )
+              leafletOutput(outputId = "map")
       ),
       
       #Visualisation univarie
@@ -176,13 +172,17 @@ ui <- dashboardPage(
               inputId = "player2",
               label = "Other player (Blue)",
               choices = name_player
+            ),
+            shiny::selectInput(
+              inputId = "choice_univar",
+              label = " variable ",
+              choices = colnames(fifa19_bivarie) #         [-c(input$choice_bivar1)])
             )
           ),
           
           mainPanel(
             fluidRow(plotOutput(outputId = "distPlot")),
             fluidRow(plotOutput(outputId = "distPlot2")),
-            fluidRow(plotOutput(outputId = "distPlot3")),
             fluidRow(plotOutput(outputId = "distPlot4")),
             fluidRow(plotOutput(outputId = "distPlot5"))
           )
@@ -328,30 +328,51 @@ server <- function(input, output) {
     rv$data_set <- data_list %>% pluck(input$dataset_choice)
   })
   
-  output$distPlot3 <- renderPlot({
-    plot(
-      table(age),
-      type = "h",
-      col = "green4",
-      xlab = "Age",
-      ylab = "Effectifs",
-      main = "Distribution des effectifs pour l'Ã¢ge"
-    )
+  observe({
+    rv$data_set <- data_list %>% pluck(input$dataset_choice)
+  })
+  
+  univarie <- reactiveValues()
+  observe({
+    if (input$choice_univar %in% names_quantitatives ) {
+      univarie$type <- 'quant'
+    }
+    else if (input$choice_univar %in% names_qualitatives){
+      univarie$type <- 'qualit'
+    } 
   })
   
   output$distPlot4 <- renderPlot({
-    plot(
-      table(overall),
-      type = "h",
-      col = "green4",
-      xlab = "Overall",
-      ylab = "Number of player",
-      main = "Distribution des notes"
-    )
+    if ( univarie$type == 'quant'){
+      plot(
+        table(fifa19_final[c(input$choice_univar)]),
+        type = "h",
+        col = "green4",
+        xlab = input$choice_univar,
+        ylab = "Number of player",
+        main = paste("Distribution des" , input$choice_univar)
+      )}
+    else {
+      effectifs <- table(fifa19_final[c(input$choice_univar)])
+      barplot(effectifs, main = "Catégories Socioprofessionnelles", 
+              ylab="Effectifs", las = 2,
+              names.arg = substr(names(effectifs), 1, 4))
+      
+    }
+    
   })
   
   output$distPlot5 <- renderPlot({
-    ggplot(fifa19_final, aes(Overall)) + geom_boxplot()
+    if ( univarie$type == 'quant'){
+      boxplot(fifa19_final[, input$choice_univar],main = paste("boxplot de " , input$choice_univar) , col="grey", xlab = input$choice_univar)
+    }
+    else {
+      effectifs <- table(fifa19_final[c(input$choice_univar)])
+      pie(effectifs, labels = substr(names(effectifs), 1, 4), 
+          main = "Catégories Socioprofessionnelles", col=c())
+      
+    }
+    
   })
   
   bivarie <- reactiveValues()
@@ -410,29 +431,46 @@ server <- function(input, output) {
     plot(updated_data$Overall,updated_data$Age,xlab = "Overall", ylab = "Age of player", main = "test")
   })
   
-  output$map <- renderPlot({
-    visitedMap <- joinCountryData2Map(world_map, 
-                                      joinCode = "NAME",
-                                      nameJoinColumn = "country",
-                                      verbose = TRUE)
-    mapParams <- mapCountryData(visitedMap, 
-                                nameColumnToPlot="Freq",
-                                oceanCol = "azure2",
-                                catMethod = "categorical",
-                                missingCountryCol = gray(.8),
-                                colourPalette = c("coral",
-                                                  "coral2",
-                                                  "coral3", "orangered", 
-                                                  "orangered3", "orangered4"),
-                                addLegend = F,
-                                mapTitle = "",
-                                border = NA)
+  output$map <- renderLeaflet({
+    # visitedMap <- joinCountryData2Map(world_map, 
+    #                                   joinCode = "NAME",
+    #                                   nameJoinColumn = "country",
+    #                                   verbose = TRUE)
+    # mapParams <- mapCountryData(visitedMap, 
+    #                             nameColumnToPlot="Freq",
+    #                             oceanCol = "azure2",
+    #                             catMethod = "categorical",
+    #                             missingCountryCol = gray(.8),
+    #                             colourPalette = c("coral",
+    #                                               "coral2",
+    #                                               "coral3", "orangered", 
+    #                                               "orangered3", "orangered4"),
+    #                             addLegend = FALSE,
+    #                             mapTitle = "Repartition des joueurs dans le monde",
+    #                             border = NA)
+    # 
     # do.call(addMapLegendBoxes, c(mapParams,
     #                              x = 'bottom',
     #                              title = "No. of visits",
     #                              horiz = TRUE,
     #                              bg = "transparent",
     #                              bty = "n"))
+    
+    # mapParams <- mapCountryData(visitedMap,
+    #                             nameColumnToPlot="Freq",
+    #                             oceanCol = "lightblue",
+    #                             missingCountryCol = "white",
+    #                             addLegend=FALSE)
+    #do.call( addMapLegend, c(mapParams, legendWidth=0.5, legendMar = 2))
+    # Initialize the leaflet map with the leaflet() function
+    # Then we Add default OpenStreetMap map tiles
+    # Same stuff but using the %>% operator
+    #   m <- leaflet::addTiles(m)
+    #   m <- leaflet() %>%  addProviderTiles("Esri.OceanBasemap")
+    #   plot(m)
+    # m <- leaflet()
+    # m <- addTiles(m)
+    leaflet() %>%  addProviderTiles("Esri.OceanBasemap")
   })
   
   output$distPlot <- renderPlot({
