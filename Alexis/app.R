@@ -15,6 +15,10 @@ library(rworldmap)
 
 
 fifa19_init <- read.csv(file = "../final_fifa_stat.csv")
+
+fifa19_init$Weak.Foot <- factor(fifa19_init$Weak.Foot, levels=c("S", "A", "B", "C", "D"), ordered=TRUE)
+fifa19_init$Skill.Moves <- factor(fifa19_init$Skill.Moves, levels=c("S", "A", "B", "C", "D"), ordered=TRUE)
+
 fifa19_final <- fifa19_init[-c(1)]
 fifa19_cor <- fifa19_init[-c(1, 9, 10, 11, 12, 17, 18, 19, 20, 21, 22, 23, 24)]
 fifa19_stat <- fifa19_init[c(17, 18, 19, 20, 21, 22)]
@@ -53,33 +57,33 @@ ui <- dashboardPage(
   dashboardHeader(title = "MyPage"),
   dashboardSidebar(
     sidebarMenu(
-      #CrÃ©ation des onglets, le champ tabName est son identifiant et le champ icon permet d'ajouter des icones deja def
+      #Creation des onglets, le champ tabName est son identifiant et le champ icon permet d'ajouter des icones deja def
       menuItem("Page d'accueil",
                tabName = "accueil",
                icon = icon("home")),
       menuItem(
-        "RÃ©partition des joueurs dans le monde",
+        "Repartition des joueurs dans le monde",
         tabName = "repartition",
         icon = icon("globe-europe")
       ),
       menuItem(
-        "Page pour variables univariÃ©",
+        "Page de correlation",
+        tabName = "correlation",
+        icon = icon("poll")
+      ),
+      menuItem(
+        "Page pour variables univariees",
         tabName = "univarie",
         icon = icon("poll")
       ),
       menuItem(
-        "Page pour variables bivariÃ©",
+        "Page pour variables bivariees",
         tabName = "bivarie",
         icon = icon("poll")
       ),
       menuItem(
-        "Page de prÃ©diction",
+        "Page de prediction",
         tabName = "prediction",
-        icon = icon("poll")
-      ),
-      menuItem(
-        "Page de corrÃ©lation",
-        tabName = "correlation",
         icon = icon("poll")
       )
     )
@@ -94,8 +98,8 @@ ui <- dashboardPage(
         sidebarLayout(
           sidebarPanel(
             width = 4,
-            h2("PrÃ©sentation", align = "center"),
-            p("Voici notre page prÃ©sentant nos rÃ©sultats et nos modÃ¨les", align = "center"),
+            h2("Presentation", align = "center"),
+            p("Voici notre page presentant nos resultats et nos modÃÂ¨les", align = "center"),
             br(),
             HTML(
               '<center><img src="https://lh4.googleusercontent.com/NcyHaUFCg7TiSIZR391geNW-BXJUGd0TGZ-gsMezwFwPt9vTPIdyMWvWeG06w27f_M682uxnrxeMLJArGDIsHPWww4o4H6ZPGOo8_Xr3FM5bIq99irwLTr5D7P70Owmjiw=w1280" width="300"
@@ -122,13 +126,13 @@ ui <- dashboardPage(
             br(),
             p(
               "For an introduction and live examples, visit the ",
-              a("datasets de dÃ©part",
+              a("datasets de depart",
                 href = "https://www.kaggle.com/karangadiya/fifa19/download")
             ),
             br(),
             h2("Features"),
             p(
-              "- Build useful web applications with only a few lines of codeâno JavaScript required."
+              "- Build useful web applications with only a few lines of codeÃ¢ÂÂno JavaScript required."
             ),
             p(
               "- Shiny applications are automatically 'live' in the same way that ",
@@ -188,19 +192,7 @@ ui <- dashboardPage(
           )
         )
       ),
-      # fluidRow(box(
-      #   width = 2,
-      #   #Valeur max 12
-      #   h1("TEST"),
-      #   fileInput(
-      #     inputId = "dataFile1",
-      #     label = "Choose CSV File",
-      #     accept = c("text/plain", ".csv"),
-      #     buttonLabel = "Browse...",
-      #     placeholder = "No file selected"
-      #   )
-      # ))),
-      
+
       # Visualisation bivarie
       tabItem(tabName = "bivarie",
               titlePanel("Static Panel 2"),
@@ -209,15 +201,15 @@ ui <- dashboardPage(
                              shiny::selectInput(
                                inputId = "choice_bivar_1",
                                label = "Feature 1",
-                               choices = colnames(fifa19_bivarie )  #      [-c(input$choice_bivar2)])
+                               choices = colnames(fifa19_bivarie ) 
                              ),
                              shiny::selectInput(
                                inputId = "choice_bivar_2",
                                label = "Feature 2",
-                               choices = colnames(fifa19_bivarie) #         [-c(input$choice_bivar1)])
+                               choices = colnames(fifa19_bivarie) 
                              ))
                 ,
-                mainPanel(fluidRow(plotOutput(outputId = "plotBivarie")))
+                mainPanel(fluidRow(plotOutput(outputId = "plotBivarie1"))) #,br(),plotOutput(outputId = "plotBivarie2")))
               )
       ),
       
@@ -316,7 +308,7 @@ server <- function(input, output) {
       cglwd = 0.8,
       # Personnaliser l'axe
       axislabcol = "grey",
-      # Ãtiquettes des variables
+      # ÃÂtiquettes des variables
       vlcex = vlcex,
       vlabels = vlabels,
       caxislabels = caxislabels,
@@ -354,7 +346,7 @@ server <- function(input, output) {
       )}
     else {
       effectifs <- table(fifa19_final[c(input$choice_univar)])
-      barplot(effectifs, main = "Catégories Socioprofessionnelles", 
+      barplot(effectifs, main = "CatÃ©gories Socioprofessionnelles", 
               ylab="Effectifs", las = 2,
               names.arg = substr(names(effectifs), 1, 4))
       
@@ -369,7 +361,7 @@ server <- function(input, output) {
     else {
       effectifs <- table(fifa19_final[c(input$choice_univar)])
       pie(effectifs, labels = substr(names(effectifs), 1, 4), 
-          main = "Catégories Socioprofessionnelles", col=c())
+          main = "CatÃ©gories Socioprofessionnelles", col=c())
       
     }
     
@@ -393,7 +385,7 @@ server <- function(input, output) {
     }
   })
   
-  output$plotBivarie <- renderPlot({
+  output$plotBivarie1 <- renderPlot({
     
     options(scipen=999)
     x.var = input$choice_bivar_1; 
@@ -402,29 +394,89 @@ server <- function(input, output) {
     if ( bivarie$type == 'quant_quant') 
     {
       
-      #plot(x = fifa19_bivarie[, x.var], y = fifa19_bivarie[, y.var], col = "blue" ) 
-      
-      scatter_plot_quanti = ggplot(fifa19_bivarie, aes_string(x=x.var, y=y.var)) + geom_point(size=2, shape=23)
+      scatter_plot_quanti = ggplot(fifa19_bivarie, aes_string(x=x.var, y=y.var)) + 
+        geom_point(size=2, shape=23) + 
+        ggtitle(paste("Graphe de " , y.var , " en fonction de ", x.var ))  +
+        theme(plot.title = element_text(hjust = 0.5, size= 20, face = "bold") ) +
+        xlab(x.var) + 
+        ylab(y.var) +
+        theme(axis.text.x=element_text(size=15), axis.title.x=element_text(size=12, margin = margin(t = 0, r = 0, b = 0, l = 0))) + 
+        theme(axis.text.y=element_text(size=15), axis.title.y=element_text(size=12, margin = margin(t = 0, r = 20, b = 0, l = 0))) #+
+      #theme( plot.background = element_rect( fill = "lightgreen", colour = "white", size = 10 ) )
       plot(scatter_plot_quanti)
       
     }
     else if ( bivarie$type == 'quant_quali') 
     {
-      boxplot(fifa19_bivarie[, x.var] ~ fifa19_bivarie[, y.var] , col="grey", xlab = y.var, ylab = x.var)
+      boxplot(fifa19_bivarie[, x.var] ~ fifa19_bivarie[, y.var] , col="grey", xlab = y.var, ylab = x.var, main=paste("Boxplot de " , y.var , " en fonction de ", x.var ))
     }
     else if ( bivarie$type == 'quali_quant') 
     {
-      boxplot(fifa19_bivarie[, y.var] ~ fifa19_bivarie[, x.var] , col="grey", xlab = x.var, ylab = y.var)
+      
+      boxplot(fifa19_bivarie[, y.var] ~ fifa19_bivarie[, x.var] , col="orange", border="red", xlab = x.var, ylab = y.var, main=paste("Boxplot de " , y.var , " en fonction de ", x.var ))
     }
     else
     {
-      barplot_quali_quali = ggplot(fifa19_bivarie, aes(x = Weak.Foot, fill = Skill.Moves)) + geom_bar(position = "fill")
+      barplot_quali_quali = ggplot(fifa19_bivarie,  aes_string(x=x.var, fill=y.var)) +
+        geom_bar(position = "fill")+ 
+        ggtitle(paste("Barplot de " , y.var , " en fonction de ", x.var ))  +
+        theme(plot.title = element_text(hjust = 0.5, size= 20, face = "bold") ) +
+        xlab(x.var) + 
+        ylab(y.var) +
+        theme(axis.text.x=element_text(size=15), axis.title.x=element_text(size=12, margin = margin(t = 0, r = 0, b = 0, l = 0))) + 
+        theme(axis.text.y=element_text(size=15), axis.title.y=element_text(size=12, margin = margin(t = 0, r = 20, b = 0, l = 0)))
+      
       plot(barplot_quali_quali)
     }
     
     options(scipen=0)
     
-  })
+  }, 
+  height = 600, width = 950 )
+  
+
+  
+  # output$plotBivarie2 <- renderPlot({
+  #   
+  #   options(scipen=999)
+  #   x.var = input$choice_bivar_1; 
+  #   y.var = input$choice_bivar_2;
+  #   
+  #   if ( bivarie$type == 'quant_quant') 
+  #   {
+  #     
+  #     scatter_plot_quanti = ggplot(fifa19_bivarie, aes_string(x=x.var, y=y.var)) + 
+  #       geom_point(size=2, shape=23) + 
+  #       ggtitle(paste("Graphe de " , y.var , " en fonction de ", x.var ))  +
+  #       theme(plot.title = element_text(hjust = 0.5, size= 20, face = "bold") ) +
+  #       xlab(x.var) + 
+  #       ylab(y.var) +
+  #       theme(axis.text.x=element_text(size=12), axis.title.x=element_text(size=15, margin = margin(t = 0, r = 0, b = 0, l = 0))) + 
+  #       theme(axis.text.y=element_text(size=12), axis.title.y=element_text(size=15, margin = margin(t = 0, r = 20, b = 0, l = 0))) #+
+  #     #theme( plot.background = element_rect( fill = "lightgreen", colour = "white", size = 10 ) )
+  #     plot(scatter_plot_quanti)
+  #     
+  #   }
+  #   else if ( bivarie$type == 'quant_quali') 
+  #   {
+  #     boxplot(fifa19_bivarie[, x.var] ~ fifa19_bivarie[, y.var] , col="grey", xlab = y.var, ylab = x.var)
+  #   }
+  #   else if ( bivarie$type == 'quali_quant') 
+  #   {
+  #     boxplot(fifa19_bivarie[, y.var] ~ fifa19_bivarie[, x.var] , col="grey", xlab = x.var, ylab = y.var)
+  #   }
+  #   else
+  #   {
+  #     barplot_quali_quali = ggplot(fifa19_bivarie, aes(x = Weak.Foot, fill = Skill.Moves)) + geom_bar(position = "fill")
+  #     plot(barplot_quali_quali)
+  #   }
+  #   
+  #   options(scipen=0)
+  #   
+  # },
+  # height = 400, width = 600 )
+
+    
   
   output$distPlot2 <- renderPlot({
     updated_data <- over_slider[over_slider$Overall>=input$overall[1]&over_slider$Overall<=input$overall[2],]
