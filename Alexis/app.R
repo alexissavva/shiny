@@ -12,6 +12,8 @@ library(dplyr)
 library(leaflet)
 library(ggplot2)
 library(rworldmap)
+library(rpart)
+library(randomForest)
 
 
 fifa19_init <- read.csv(file = "../final_fifa_stat.csv")
@@ -23,6 +25,7 @@ fifa19_final <- fifa19_init[-c(1)]
 fifa19_cor <- fifa19_init[-c(1, 9, 10, 11, 12, 17, 18, 19, 20, 21, 22, 23, 24)]
 fifa19_stat <- fifa19_init[c(17, 18, 19, 20, 21, 22)]
 fifa19_bivarie <- as.data.frame(fifa19_init[-c(1,2,17,18,19,20,21,22,23,24)])
+fifa19_pred <- as.data.frame(fifa19_init[-c(1,2,17,18,19,20,21,22,23,24)])
 
 names_quantitatives <- list("Age", "Overall", "Potential", "Value", "Wage", "Contract.Valid.Until", "Height", "Weight", "Release.Clause") 
 names_qualitatives <- list("Nationality", "Preferred.Foot", "Weak.Foot", "Skill.Moves", "Position")
@@ -62,27 +65,27 @@ ui <- dashboardPage(
                tabName = "accueil",
                icon = icon("home")),
       menuItem(
-        "Repartition des joueurs dans le monde",
+        "Répartition des joueurs dans le monde",
         tabName = "repartition",
         icon = icon("globe-europe")
       ),
       menuItem(
-        "Page de correlation",
+        "Corrélations",
         tabName = "correlation",
         icon = icon("poll")
       ),
       menuItem(
-        "Page pour variables univariees",
+        "Analyses univariées",
         tabName = "univarie",
         icon = icon("poll")
       ),
       menuItem(
-        "Page pour variables bivariees",
+        "Analyses bivariées",
         tabName = "bivarie",
         icon = icon("poll")
       ),
       menuItem(
-        "Page de prediction",
+        "Prédiction",
         tabName = "prediction",
         icon = icon("poll")
       )
@@ -99,7 +102,7 @@ ui <- dashboardPage(
           sidebarPanel(
             width = 4,
             h2("Presentation", align = "center"),
-            p("Voici notre page presentant nos resultats et nos modÃÂ¨les", align = "center"),
+            p("Voici notre page presentant nos résultats et nos modèles", align = "center"),
             br(),
             HTML(
               '<center><img src="https://lh4.googleusercontent.com/NcyHaUFCg7TiSIZR391geNW-BXJUGd0TGZ-gsMezwFwPt9vTPIdyMWvWeG06w27f_M682uxnrxeMLJArGDIsHPWww4o4H6ZPGOo8_Xr3FM5bIq99irwLTr5D7P70Owmjiw=w1280" width="300"
@@ -132,7 +135,7 @@ ui <- dashboardPage(
             br(),
             h2("Features"),
             p(
-              "- Build useful web applications with only a few lines of codeÃ¢ÂÂno JavaScript required."
+              "- Build useful web applications with only a few lines of codeÃÂ¢ÃÂÃÂno JavaScript required."
             ),
             p(
               "- Shiny applications are automatically 'live' in the same way that ",
@@ -216,28 +219,22 @@ ui <- dashboardPage(
       # Prediction
       tabItem(tabName = "prediction",
               fluidRow(
-                column(
-                  2,
-                  #offset = 1,
-                  h1("TEST"),
-                  fileInput(
-                    inputId = "dataFile3",
-                    label = "Choose CSV File",
-                    accept = c("text/plain", ".csv"),
-                    buttonLabel = "Browse...",
-                    placeholder = "No file selected"
-                  )
-                ),
                 column(4,
-                       h2("summary"),
-                       verbatimTextOutput(outputId = "summary"))
+                       h2('Prédiction de la variable "Salaire"'),
+                       verbatimTextOutput(outputId = "Zizou"))
+                      ),
+              
+              fluidRow(column(4,  checkboxGroupInput("variable_pred", 
+                                                      "Variable(s) utilisée(s) :",
+                                                      choiceNames = list("Âge","Nationalité","Général","Potentiel","Valeur","Pied Fort","Pied Faible", "Technique", "Position", "Fin de Contrat", "Taille", "Poids","Clause") ,
+                                                      choiceValues = colnames(fifa19_pred)[-c(6)]
+                                                    )
+                               )
+                       ),
+              br(),
+              br(),
+              actionButton("launch_pred", "Lancer la prédiction")
               ),
-              fluidRow(column(
-                2,
-                offset = 1,
-                h1("TEST"),
-                tableOutput(outputId = "contents")
-              ))),
       
       tabItem(tabName = "correlation",
               tabPanel(
@@ -308,7 +305,7 @@ server <- function(input, output) {
       cglwd = 0.8,
       # Personnaliser l'axe
       axislabcol = "grey",
-      # ÃÂtiquettes des variables
+      # ÃÂÃÂtiquettes des variables
       vlcex = vlcex,
       vlabels = vlabels,
       caxislabels = caxislabels,
@@ -346,7 +343,7 @@ server <- function(input, output) {
       )}
     else {
       effectifs <- table(fifa19_final[c(input$choice_univar)])
-      barplot(effectifs, main = "CatÃ©gories Socioprofessionnelles", 
+      barplot(effectifs, main = "CatÃÂ©gories Socioprofessionnelles", 
               ylab="Effectifs", las = 2,
               names.arg = substr(names(effectifs), 1, 4))
       
@@ -361,7 +358,7 @@ server <- function(input, output) {
     else {
       effectifs <- table(fifa19_final[c(input$choice_univar)])
       pie(effectifs, labels = substr(names(effectifs), 1, 4), 
-          main = "CatÃ©gories Socioprofessionnelles", col=c())
+          main = "CatÃÂ©gories Socioprofessionnelles", col=c())
       
     }
     
@@ -436,48 +433,50 @@ server <- function(input, output) {
   
 
   
-  # output$plotBivarie2 <- renderPlot({
-  #   
-  #   options(scipen=999)
-  #   x.var = input$choice_bivar_1; 
-  #   y.var = input$choice_bivar_2;
-  #   
-  #   if ( bivarie$type == 'quant_quant') 
-  #   {
-  #     
-  #     scatter_plot_quanti = ggplot(fifa19_bivarie, aes_string(x=x.var, y=y.var)) + 
-  #       geom_point(size=2, shape=23) + 
-  #       ggtitle(paste("Graphe de " , y.var , " en fonction de ", x.var ))  +
-  #       theme(plot.title = element_text(hjust = 0.5, size= 20, face = "bold") ) +
-  #       xlab(x.var) + 
-  #       ylab(y.var) +
-  #       theme(axis.text.x=element_text(size=12), axis.title.x=element_text(size=15, margin = margin(t = 0, r = 0, b = 0, l = 0))) + 
-  #       theme(axis.text.y=element_text(size=12), axis.title.y=element_text(size=15, margin = margin(t = 0, r = 20, b = 0, l = 0))) #+
-  #     #theme( plot.background = element_rect( fill = "lightgreen", colour = "white", size = 10 ) )
-  #     plot(scatter_plot_quanti)
-  #     
-  #   }
-  #   else if ( bivarie$type == 'quant_quali') 
-  #   {
-  #     boxplot(fifa19_bivarie[, x.var] ~ fifa19_bivarie[, y.var] , col="grey", xlab = y.var, ylab = x.var)
-  #   }
-  #   else if ( bivarie$type == 'quali_quant') 
-  #   {
-  #     boxplot(fifa19_bivarie[, y.var] ~ fifa19_bivarie[, x.var] , col="grey", xlab = x.var, ylab = y.var)
-  #   }
-  #   else
-  #   {
-  #     barplot_quali_quali = ggplot(fifa19_bivarie, aes(x = Weak.Foot, fill = Skill.Moves)) + geom_bar(position = "fill")
-  #     plot(barplot_quali_quali)
-  #   }
-  #   
-  #   options(scipen=0)
-  #   
-  # },
-  # height = 400, width = 600 )
-
-    
+  ## Prediction
   
+  pred <- reactiveValues(data_pred = NULL)
+  
+  observeEvent(input$launch_pred, {
+    
+    # Recuperation des variables 
+    pred$data_pred <- input$variable_pred
+    
+    # DF de prédicteurs + Variable à prédire
+    fifa19_pred <- fifa19_init[pred$data_pred]
+    target_pred <- fifa19_init$Wage
+    
+    # Découpage Train / Test
+    size.data = nrow(fifa19_pred)
+    napp.pred = round(0.8*size.data)
+    indices.fifa = sample(1:size.data, napp.pred , replace=FALSE)
+
+    data.fifa.train = fifa19_pred[indices.fifa,]
+    data.fifa.test = fifa19_pred[-indices.fifa,]
+    wage.train = target_pred[indices.fifa]
+    wage.test = target_pred[-indices.fifa]
+    
+    model.lm = lm( wage.train ~. , data=data.fifa.train)
+    wage.lm.app = as.numeric(predict(model.lm))
+    wage.lm.test = as.numeric(predict(model.lm, newdata = data.fifa.test))
+    
+    model.cart.max = rpart(wage.train ~ . , control=rpart.control(cp=0), method = "anova", data = data.fifa.train)
+    wage.cart.max.app = as.numeric(predict(model.cart.max))
+    wage.cart.max.test = as.numeric(predict(model.cart.max , newdata=data.fifa.test))
+    
+    Cp=model.cart.max$cptable[which.min(model.cart.max$cptable[,4]),1]
+    model.cart.opt = prune(model.cart.max, cp = Cp)
+    wage.cart.opt.app = predict(model.cart.opt)
+    wage.cart.opt.test = as.numeric(predict(model.cart.opt , newdata=data.fifa.test))
+    
+    model.rf = randomForest(wage.train ~., importance=TRUE, data=data.fifa.train, ntree= 50)
+    wage.rf.app = as.numeric(predict(model.rf, newdata=data.fifa.train))
+    wage.rf.test = as.numeric(predict(model.rf, newdata=data.fifa.test))
+    
+
+  })
+  
+
   output$distPlot2 <- renderPlot({
     updated_data <- over_slider[over_slider$Overall>=input$overall[1]&over_slider$Overall<=input$overall[2],]
     plot(updated_data$Overall,updated_data$Age,xlab = "Overall", ylab = "Age of player", main = "test")
@@ -584,6 +583,7 @@ server <- function(input, output) {
     plotly::ggplotly(g)
     
   })
+  
 }
 # Association interface & commandes
 shinyApp(ui = ui, server = server)
