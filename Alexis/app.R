@@ -65,27 +65,27 @@ ui <- dashboardPage(
                tabName = "accueil",
                icon = icon("home")),
       menuItem(
-        "Répartition des joueurs dans le monde",
+        "RÃ©partition des joueurs dans le monde",
         tabName = "repartition",
         icon = icon("globe-europe")
       ),
       menuItem(
-        "Corrélations",
+        "CorrÃ©lations",
         tabName = "correlation",
         icon = icon("poll")
       ),
       menuItem(
-        "Analyses univariées",
+        "Analyses univariÃ©es",
         tabName = "univarie",
         icon = icon("poll")
       ),
       menuItem(
-        "Analyses bivariées",
+        "Analyses bivariÃ©es",
         tabName = "bivarie",
         icon = icon("poll")
       ),
       menuItem(
-        "Prédiction",
+        "PrÃ©diction",
         tabName = "prediction",
         icon = icon("poll")
       )
@@ -102,7 +102,7 @@ ui <- dashboardPage(
           sidebarPanel(
             width = 4,
             h2("Presentation", align = "center"),
-            p("Voici notre page presentant nos résultats et nos modèles", align = "center"),
+            p("Voici notre page presentant nos rÃ©sultats et nos modÃ¨les", align = "center"),
             br(),
             HTML(
               '<center><img src="https://lh4.googleusercontent.com/NcyHaUFCg7TiSIZR391geNW-BXJUGd0TGZ-gsMezwFwPt9vTPIdyMWvWeG06w27f_M682uxnrxeMLJArGDIsHPWww4o4H6ZPGOo8_Xr3FM5bIq99irwLTr5D7P70Owmjiw=w1280" width="300"
@@ -135,7 +135,7 @@ ui <- dashboardPage(
             br(),
             h2("Features"),
             p(
-              "- Build useful web applications with only a few lines of codeÃÂ¢ÃÂÃÂno JavaScript required."
+              "- Build useful web applications with only a few lines of codeÃÂÃÂ¢ÃÂÃÂÃÂÃÂno JavaScript required."
             ),
             p(
               "- Shiny applications are automatically 'live' in the same way that ",
@@ -220,20 +220,20 @@ ui <- dashboardPage(
       tabItem(tabName = "prediction",
               fluidRow(
                 column(4,
-                       h2('Prédiction de la variable "Salaire"'),
+                       h2('PrÃ©diction de la variable "Salaire"'),
                        verbatimTextOutput(outputId = "Zizou"))
                       ),
               
               fluidRow(column(4,  checkboxGroupInput("variable_pred", 
-                                                      "Variable(s) utilisée(s) :",
-                                                      choiceNames = list("Âge","Nationalité","Général","Potentiel","Valeur","Pied Fort","Pied Faible", "Technique", "Position", "Fin de Contrat", "Taille", "Poids","Clause") ,
+                                                      "Variable(s) utilisÃ©e(s) :",
+                                                      choiceNames = list("Ãge","NationalitÃ©","GÃ©nÃ©ral","Potentiel","Valeur","Pied Fort","Pied Faible", "Technique", "Position", "Fin de Contrat", "Taille", "Poids","Clause") ,
                                                       choiceValues = colnames(fifa19_pred)[-c(6)]
                                                     )
                                )
                        ),
               br(),
               br(),
-              actionButton("launch_pred", "Lancer la prédiction")
+              actionButton("launch_pred", "Lancer la prÃ©diction")
               ),
       
       tabItem(tabName = "correlation",
@@ -305,7 +305,7 @@ server <- function(input, output) {
       cglwd = 0.8,
       # Personnaliser l'axe
       axislabcol = "grey",
-      # ÃÂÃÂtiquettes des variables
+      # ÃÂÃÂÃÂÃÂtiquettes des variables
       vlcex = vlcex,
       vlabels = vlabels,
       caxislabels = caxislabels,
@@ -343,7 +343,7 @@ server <- function(input, output) {
       )}
     else {
       effectifs <- table(fifa19_final[c(input$choice_univar)])
-      barplot(effectifs, main = "CatÃÂ©gories Socioprofessionnelles", 
+      barplot(effectifs, main = "CatÃÂÃÂ©gories Socioprofessionnelles", 
               ylab="Effectifs", las = 2,
               names.arg = substr(names(effectifs), 1, 4))
       
@@ -358,7 +358,7 @@ server <- function(input, output) {
     else {
       effectifs <- table(fifa19_final[c(input$choice_univar)])
       pie(effectifs, labels = substr(names(effectifs), 1, 4), 
-          main = "CatÃÂ©gories Socioprofessionnelles", col=c())
+          main = "CatÃÂÃÂ©gories Socioprofessionnelles", col=c())
       
     }
     
@@ -397,8 +397,8 @@ server <- function(input, output) {
         theme(plot.title = element_text(hjust = 0.5, size= 20, face = "bold") ) +
         xlab(x.var) + 
         ylab(y.var) +
-        theme(axis.text.x=element_text(size=15), axis.title.x=element_text(size=12, margin = margin(t = 0, r = 0, b = 0, l = 0))) + 
-        theme(axis.text.y=element_text(size=15), axis.title.y=element_text(size=12, margin = margin(t = 0, r = 20, b = 0, l = 0))) #+
+        theme(axis.text.x=element_text(size=15), axis.title.x=element_text(size=12)) + #, margin = margin(t = 0, r = 0, b = 0, l = 0)
+        theme(axis.text.y=element_text(size=15), axis.title.y=element_text(size=12)) #+ , margin = margin(t = 0, r = 20, b = 0, l = 0)
       #theme( plot.background = element_rect( fill = "lightgreen", colour = "white", size = 10 ) )
       plot(scatter_plot_quanti)
       
@@ -420,8 +420,8 @@ server <- function(input, output) {
         theme(plot.title = element_text(hjust = 0.5, size= 20, face = "bold") ) +
         xlab(x.var) + 
         ylab(y.var) +
-        theme(axis.text.x=element_text(size=15), axis.title.x=element_text(size=12, margin = margin(t = 0, r = 0, b = 0, l = 0))) + 
-        theme(axis.text.y=element_text(size=15), axis.title.y=element_text(size=12, margin = margin(t = 0, r = 20, b = 0, l = 0)))
+        theme(axis.text.x=element_text(size=15), axis.title.x=element_text(size=12)) + # , margin = margin(t = 0, r = 0, b = 0, l = 0)
+        theme(axis.text.y=element_text(size=15), axis.title.y=element_text(size=12))   # , margin = margin(t = 0, r = 20, b = 0, l = 0)
       
       plot(barplot_quali_quali)
     }
@@ -442,11 +442,11 @@ server <- function(input, output) {
     # Recuperation des variables 
     pred$data_pred <- input$variable_pred
     
-    # DF de prédicteurs + Variable à prédire
+    # DF de prÃ©dicteurs + Variable Ã  prÃ©dire
     fifa19_pred <- fifa19_init[pred$data_pred]
     target_pred <- fifa19_init$Wage
     
-    # Découpage Train / Test
+    # DÃ©coupage Train / Test
     size.data = nrow(fifa19_pred)
     napp.pred = round(0.8*size.data)
     indices.fifa = sample(1:size.data, napp.pred , replace=FALSE)
