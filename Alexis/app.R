@@ -58,27 +58,27 @@ ui <- dashboardPage(
                tabName = "accueil",
                icon = icon("home")),
       menuItem(
-        "RÃ©partition des joueurs dans le monde",
+        "Repartition des joueurs dans le monde",
         tabName = "repartition",
         icon = icon("globe-europe")
       ),
       menuItem(
-        "Page pour variables univariÃ©",
+        "Page pour variables univarie",
         tabName = "univarie",
         icon = icon("poll")
       ),
       menuItem(
-        "Page pour variables bivariÃ©",
+        "Page pour variables bivare©",
         tabName = "bivarie",
         icon = icon("poll")
       ),
       menuItem(
-        "Page de prÃ©diction",
+        "Page de prediction",
         tabName = "prediction",
         icon = icon("poll")
       ),
       menuItem(
-        "Page de corrÃ©lation",
+        "Page de correlation",
         tabName = "correlation",
         icon = icon("poll")
       )
@@ -94,8 +94,8 @@ ui <- dashboardPage(
         sidebarLayout(
           sidebarPanel(
             width = 4,
-            h2("PrÃ©sentation", align = "center"),
-            p("Voici notre page prÃ©sentant nos rÃ©sultats et nos modÃ¨les", align = "center"),
+            h2("Presentation", align = "center"),
+            p("Voici notre page presentant nos resultats et nos modeles", align = "center"),
             br(),
             HTML(
               '<center><img src="https://lh4.googleusercontent.com/NcyHaUFCg7TiSIZR391geNW-BXJUGd0TGZ-gsMezwFwPt9vTPIdyMWvWeG06w27f_M682uxnrxeMLJArGDIsHPWww4o4H6ZPGOo8_Xr3FM5bIq99irwLTr5D7P70Owmjiw=w1280" width="300"
@@ -122,13 +122,13 @@ ui <- dashboardPage(
             br(),
             p(
               "For an introduction and live examples, visit the ",
-              a("datasets de dÃ©part",
+              a("datasets de depart",
                 href = "https://www.kaggle.com/karangadiya/fifa19/download")
             ),
             br(),
             h2("Features"),
             p(
-              "- Build useful web applications with only a few lines of codeâno JavaScript required."
+              "- Build useful web applications with only a few lines of JavaScript required."
             ),
             p(
               "- Shiny applications are automatically 'live' in the same way that ",
@@ -316,7 +316,7 @@ server <- function(input, output) {
       cglwd = 0.8,
       # Personnaliser l'axe
       axislabcol = "grey",
-      # Ãtiquettes des variables
+      # Etiquettes des variables
       vlcex = vlcex,
       vlabels = vlabels,
       caxislabels = caxislabels,
