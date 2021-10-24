@@ -16,6 +16,7 @@ library(rpart)
 library(randomForest)
 library(maps)
 
+options(encoding = "native.enc")
 
 fifa19_init <- read.csv(file = "../final_fifa_stat.csv")
 
@@ -196,7 +197,7 @@ ui <- dashboardPage(
           )
         )
       ),
-
+      
       # Visualisation bivarie
       tabItem(tabName = "bivarie",
               titlePanel("Static Panel 2"),
@@ -219,23 +220,41 @@ ui <- dashboardPage(
       
       # Prediction
       tabItem(tabName = "prediction",
-              fluidRow(
-                column(4,
-                       h2('PrÃ©diction de la variable "Salaire"'),
-                       verbatimTextOutput(outputId = "Zizou"))
-                      ),
-              
-              fluidRow(column(4,  checkboxGroupInput("variable_pred", 
-                                                      "Variable(s) utilisÃ©e(s) :",
-                                                      choiceNames = list("Age","Nationalité","Général","Potentiel","Valeur","Pied Fort","Pied Faible", "Technique", "Position", "Fin de Contrat", "Taille", "Poids","Clause") ,
-                                                      choiceValues = colnames(fifa19_pred)[-c(6)]
-                                                    )
-                               )
-                       ),
+              fluidRow(align = "center",
+                       column(12,
+                              h1('PrÃ©diction de la variable "Salaire"'),
+                              verbatimTextOutput(outputId = "Zizou")
+                       )),
+              br(),
+              fluidRow( 
+                column(6,  
+                       checkboxGroupInput("variable_pred", 
+                                          "Variable(s) utilisÃ©e(s) :",
+                                          choiceNames = list("Âge","Nationalité","Général","Potentiel","Valeur","Pied Fort","Pied Faible", "Technique", "Position", "Fin de Contrat", "Taille", "Poids","Clause") ,
+                                          choiceValues = colnames(fifa19_pred)[-c(6)]
+                       )
+                ),
+                column(6,   sliderInput("app_rate",
+                                        "Pourcentage de données d'apprentissage :",
+                                        min = 50,
+                                        max = 95,
+                                        value = 80)
+                       ,
+                       br(),
+                       checkboxGroupInput("models_pred", 
+                                          "Modèle(s) utilisÃ©(s) :",
+                                          choiceNames = list("Régression Linéaire Multiple","Arbre Cart Maximum","Arbre Cart Optimal", "GAM", "SVR Linéaire", "SVR Radiale","RandomForest") ,
+                                          choiceValues = c("lm","cart_max","cart_opt","gam","svr_lin","svr_rad","rf")
+                       )
+                       
+                )),
               br(),
               br(),
-              actionButton("launch_pred", "Lancer la prÃ©diction")
-              ),
+              fluidRow(   
+                align = "center",
+                actionButton("launch_pred", "Lancer la prÃ©diction")
+              )
+      ),
       
       tabItem(tabName = "correlation",
               tabPanel(
@@ -420,7 +439,7 @@ server <- function(input, output) {
   }, 
   height = 600, width = 950 )
   
-
+  
   
   ## Prediction
   
@@ -440,7 +459,7 @@ server <- function(input, output) {
     size.data = nrow(fifa19_pred)
     napp.pred = round(0.8*size.data)
     indices.fifa = sample(1:size.data, napp.pred , replace=FALSE)
-
+    
     data.fifa.train = fifa19_pred[indices.fifa,]
     data.fifa.test = fifa19_pred[-indices.fifa,]
     wage.train = target_pred[indices.fifa]
@@ -464,10 +483,9 @@ server <- function(input, output) {
     wage.rf.test = as.numeric(predict(model.rf, newdata=data.fifa.test))
     #varImpPlot(model)
     
-
+    
   })
   
-
   output$distPlot2 <- renderPlot({
     updated_data <- over_slider[over_slider$Overall>=input$overall[1]&over_slider$Overall<=input$overall[2],]
     plot(updated_data$Overall,updated_data$Age,xlab = "Overall", ylab = "Age of player", main = "test")
