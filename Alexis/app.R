@@ -14,6 +14,7 @@ library(ggplot2)
 library(rworldmap)
 library(rpart)
 library(randomForest)
+library(maps)
 
 
 fifa19_init <- read.csv(file = "../final_fifa_stat.csv")
@@ -57,35 +58,35 @@ data_list = list(
 )
 
 ui <- dashboardPage(
-  dashboardHeader(title = "MyPage"),
+  dashboardHeader(title = "Projet Shiny sur Fifa19"),
   dashboardSidebar(
     sidebarMenu(
       #Creation des onglets, le champ tabName est son identifiant et le champ icon permet d'ajouter des icones deja def
-      menuItem("Page d'accueil",
+      menuItem("Page d'accueil et statistique",
                tabName = "accueil",
                icon = icon("home")),
       menuItem(
-        "RÃ©partition des joueurs dans le monde",
+        "Répartition des joueurs dans le monde",
         tabName = "repartition",
         icon = icon("globe-europe")
       ),
       menuItem(
-        "CorrÃ©lations",
+        "Corrélations",
         tabName = "correlation",
         icon = icon("poll")
       ),
       menuItem(
-        "Analyses univariÃ©es",
+        "Analyses univariées",
         tabName = "univarie",
         icon = icon("poll")
       ),
       menuItem(
-        "Analyses bivariÃ©es",
+        "Analyses bivariées",
         tabName = "bivarie",
         icon = icon("poll")
       ),
       menuItem(
-        "PrÃ©diction",
+        "Prédiction",
         tabName = "prediction",
         icon = icon("poll")
       )
@@ -102,12 +103,12 @@ ui <- dashboardPage(
           sidebarPanel(
             width = 4,
             h2("Presentation", align = "center"),
-            p("Voici notre page presentant nos rÃ©sultats et nos modÃ¨les", align = "center"),
+            p("Voici notre page presentant nos résultats et nos modèles", align = "center"),
             br(),
-            HTML(
-              '<center><img src="https://lh4.googleusercontent.com/NcyHaUFCg7TiSIZR391geNW-BXJUGd0TGZ-gsMezwFwPt9vTPIdyMWvWeG06w27f_M682uxnrxeMLJArGDIsHPWww4o4H6ZPGOo8_Xr3FM5bIq99irwLTr5D7P70Owmjiw=w1280" width="300"
-     height="300"></center>'
-            ),
+     #        HTML(
+     #          '<center><img src="https://lh4.googleusercontent.com/NcyHaUFCg7TiSIZR391geNW-BXJUGd0TGZ-gsMezwFwPt9vTPIdyMWvWeG06w27f_M682uxnrxeMLJArGDIsHPWww4o4H6ZPGOo8_Xr3FM5bIq99irwLTr5D7P70Owmjiw=w1280" width="300"
+     # height="300"></center>'
+            #),
             br(),
             br(),
             "Shiny is a product of ",
@@ -135,7 +136,7 @@ ui <- dashboardPage(
             br(),
             h2("Features"),
             p(
-              "- Build useful web applications with only a few lines of codeÃÂÃÂ¢ÃÂÃÂÃÂÃÂno JavaScript required."
+              "- Build useful web applications with only a few lines of JavaScript required."
             ),
             p(
               "- Shiny applications are automatically 'live' in the same way that ",
@@ -226,7 +227,7 @@ ui <- dashboardPage(
               
               fluidRow(column(4,  checkboxGroupInput("variable_pred", 
                                                       "Variable(s) utilisÃ©e(s) :",
-                                                      choiceNames = list("Ãge","NationalitÃ©","GÃ©nÃ©ral","Potentiel","Valeur","Pied Fort","Pied Faible", "Technique", "Position", "Fin de Contrat", "Taille", "Poids","Clause") ,
+                                                      choiceNames = list("Age","Nationalité","Général","Potentiel","Valeur","Pied Fort","Pied Faible", "Technique", "Position", "Fin de Contrat", "Taille", "Poids","Clause") ,
                                                       choiceValues = colnames(fifa19_pred)[-c(6)]
                                                     )
                                )
@@ -272,25 +273,12 @@ server <- function(input, output) {
   overall <- fifa19_final[c(4)]
   over_slider <- fifa19_final[c('Overall','Age')]
   
-  
-  dat <- reactive({
-    test <-
-      fifa19_final[fifa19_final$Overall %in% seq(
-        from = min(input$overall),
-        to = max(input$overall),
-        by = 1
-      ), ]
-    print(test)
-    test
-  })
-  
   create_beautiful_radarchart <- function(data,
                                           color = "#F5A42F",
                                           vlabels = colnames(data),
                                           vlcex = 0.7,
                                           caxislabels = NULL,
-                                          title = NULL,
-                                          ...) {
+                                          title = NULL) {
     radarchart(
       data,
       axistype = 1,
@@ -305,7 +293,7 @@ server <- function(input, output) {
       cglwd = 0.8,
       # Personnaliser l'axe
       axislabcol = "grey",
-      # ÃÂÃÂÃÂÃÂtiquettes des variables
+      # Etiquettes des variables
       vlcex = vlcex,
       vlabels = vlabels,
       caxislabels = caxislabels,
@@ -322,6 +310,7 @@ server <- function(input, output) {
   })
   
   univarie <- reactiveValues()
+  
   observe({
     if (input$choice_univar %in% names_quantitatives ) {
       univarie$type <- 'quant'
@@ -343,7 +332,7 @@ server <- function(input, output) {
       )}
     else {
       effectifs <- table(fifa19_final[c(input$choice_univar)])
-      barplot(effectifs, main = "CatÃÂÃÂ©gories Socioprofessionnelles", 
+      barplot(effectifs, main = "Catégories Socioprofessionnelles", 
               ylab="Effectifs", las = 2,
               names.arg = substr(names(effectifs), 1, 4))
       
@@ -358,7 +347,7 @@ server <- function(input, output) {
     else {
       effectifs <- table(fifa19_final[c(input$choice_univar)])
       pie(effectifs, labels = substr(names(effectifs), 1, 4), 
-          main = "CatÃÂÃÂ©gories Socioprofessionnelles", col=c())
+          main = "Catégories Socioprofessionnelles", col=c())
       
     }
     
@@ -441,12 +430,13 @@ server <- function(input, output) {
     
     # Recuperation des variables 
     pred$data_pred <- input$variable_pred
+    print(typeof(pred$data_pred))
     
-    # DF de prÃ©dicteurs + Variable Ã  prÃ©dire
+    # DF de prédicteurs + Variable à prédire
     fifa19_pred <- fifa19_init[pred$data_pred]
     target_pred <- fifa19_init$Wage
     
-    # DÃ©coupage Train / Test
+    # Découpage Train / Test
     size.data = nrow(fifa19_pred)
     napp.pred = round(0.8*size.data)
     indices.fifa = sample(1:size.data, napp.pred , replace=FALSE)
@@ -472,6 +462,7 @@ server <- function(input, output) {
     model.rf = randomForest(wage.train ~., importance=TRUE, data=data.fifa.train, ntree= 50)
     wage.rf.app = as.numeric(predict(model.rf, newdata=data.fifa.train))
     wage.rf.test = as.numeric(predict(model.rf, newdata=data.fifa.test))
+    #varImpPlot(model)
     
 
   })
@@ -521,7 +512,17 @@ server <- function(input, output) {
     #   plot(m)
     # m <- leaflet()
     # m <- addTiles(m)
-    leaflet() %>%  addProviderTiles("Esri.OceanBasemap")
+    #leaflet() %>%  addProviderTiles("Esri.OceanBasemap")
+    map <- read.csv(file = "country.csv",sep=";")
+    names(map)[names(map) == "Freq"] <- "n"
+    data(world.cities)
+    df2 <- world.cities %>%
+      filter(capital == 1) %>%
+      dplyr::select(country = country.etc, lat, lng = long) %>%
+      left_join(map, ., by = "country")
+    # now map the result
+    leaflet(df2) %>% addTiles()%>% addMarkers(label = ~n) 
+    
   })
   
   output$distPlot <- renderPlot({
