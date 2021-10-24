@@ -15,8 +15,17 @@ library(rworldmap)
 library(rpart)
 library(randomForest)
 library(maps)
+library(Metrics)
 
-options(encoding = "native.enc")
+
+variance_expliquee<- function(obs,prev)
+{
+  #index des individus
+  VarE = 1 - var(prev - obs) / var(obs)
+  #rÃ©gression sans constante sur l'Ã©ch. bootstrap
+  #coefficients
+  return(VarE)
+}
 
 fifa19_init <- read.csv(file = "../final_fifa_stat.csv")
 
@@ -67,27 +76,27 @@ ui <- dashboardPage(
                tabName = "accueil",
                icon = icon("home")),
       menuItem(
-        "Répartition des joueurs dans le monde",
+        "Repartition des joueurs dans le monde",
         tabName = "repartition",
         icon = icon("globe-europe")
       ),
       menuItem(
-        "Corrélations",
+        "Correlations",
         tabName = "correlation",
         icon = icon("poll")
       ),
       menuItem(
-        "Analyses univariées",
+        "Analyses univariees",
         tabName = "univarie",
         icon = icon("poll")
       ),
       menuItem(
-        "Analyses bivariées",
+        "Analyses bivariees",
         tabName = "bivarie",
         icon = icon("poll")
       ),
       menuItem(
-        "Prédiction",
+        "Prediction",
         tabName = "prediction",
         icon = icon("poll")
       )
@@ -104,11 +113,11 @@ ui <- dashboardPage(
           sidebarPanel(
             width = 4,
             h2("Presentation", align = "center"),
-            p("Voici notre page presentant nos résultats et nos modèles", align = "center"),
+            p("Voici notre page presentant nos resultats et nos modeles", align = "center"),
             br(),
-     #        HTML(
-     #          '<center><img src="https://lh4.googleusercontent.com/NcyHaUFCg7TiSIZR391geNW-BXJUGd0TGZ-gsMezwFwPt9vTPIdyMWvWeG06w27f_M682uxnrxeMLJArGDIsHPWww4o4H6ZPGOo8_Xr3FM5bIq99irwLTr5D7P70Owmjiw=w1280" width="300"
-     # height="300"></center>'
+            #        HTML(
+            #          '<center><img src="https://lh4.googleusercontent.com/NcyHaUFCg7TiSIZR391geNW-BXJUGd0TGZ-gsMezwFwPt9vTPIdyMWvWeG06w27f_M682uxnrxeMLJArGDIsHPWww4o4H6ZPGOo8_Xr3FM5bIq99irwLTr5D7P70Owmjiw=w1280" width="300"
+            # height="300"></center>'
             #),
             br(),
             br(),
@@ -222,29 +231,29 @@ ui <- dashboardPage(
       tabItem(tabName = "prediction",
               fluidRow(align = "center",
                        column(12,
-                              h1('PrÃ©diction de la variable "Salaire"'),
+                              h1('PrÃÂ©diction de la variable "Salaire"'),
                               verbatimTextOutput(outputId = "Zizou")
                        )),
               br(),
               fluidRow( 
                 column(6,  
                        checkboxGroupInput("variable_pred", 
-                                          "Variable(s) utilisÃ©e(s) :",
-                                          choiceNames = list("Âge","Nationalité","Général","Potentiel","Valeur","Pied Fort","Pied Faible", "Technique", "Position", "Fin de Contrat", "Taille", "Poids","Clause") ,
+                                          "Variable(s) utilisÃÂ©e(s) :",
+                                          choiceNames = list("Ãge","NationalitÃ©","GÃ©nÃ©ral","Potentiel","Valeur","Pied Fort","Pied Faible", "Technique", "Position", "Fin de Contrat", "Taille", "Poids","Clause") ,
                                           choiceValues = colnames(fifa19_pred)[-c(6)]
                        )
                 ),
                 column(6,   sliderInput("app_rate",
-                                        "Pourcentage de données d'apprentissage :",
+                                        "Pourcentage de donnÃ©es d'apprentissage :",
                                         min = 50,
                                         max = 95,
                                         value = 80)
                        ,
                        br(),
                        checkboxGroupInput("models_pred", 
-                                          "Modèle(s) utilisÃ©(s) :",
-                                          choiceNames = list("Régression Linéaire Multiple","Arbre Cart Maximum","Arbre Cart Optimal", "GAM", "SVR Linéaire", "SVR Radiale","RandomForest") ,
-                                          choiceValues = c("lm","cart_max","cart_opt","gam","svr_lin","svr_rad","rf")
+                                          "ModÃ¨le(s) utilisÃÂ©(s) :",
+                                          choiceNames = list("RÃ©gression LinÃ©aire Multiple","Arbre CART", "GAM", "SVR","RandomForest") ,
+                                          choiceValues = c("lm","cart","gam","svr","rf")
                        )
                        
                 )),
@@ -252,7 +261,7 @@ ui <- dashboardPage(
               br(),
               fluidRow(   
                 align = "center",
-                actionButton("launch_pred", "Lancer la prÃ©diction")
+                actionButton("launch_pred", "Lancer la prÃÂ©diction")
               )
       ),
       
@@ -351,7 +360,7 @@ server <- function(input, output) {
       )}
     else {
       effectifs <- table(fifa19_final[c(input$choice_univar)])
-      barplot(effectifs, main = "Catégories Socioprofessionnelles", 
+      barplot(effectifs, main = "Categories Socioprofessionnelles", 
               ylab="Effectifs", las = 2,
               names.arg = substr(names(effectifs), 1, 4))
       
@@ -366,7 +375,7 @@ server <- function(input, output) {
     else {
       effectifs <- table(fifa19_final[c(input$choice_univar)])
       pie(effectifs, labels = substr(names(effectifs), 1, 4), 
-          main = "Catégories Socioprofessionnelles", col=c())
+          main = "Categories Socioprofessionnelles", col=c())
       
     }
     
@@ -443,46 +452,163 @@ server <- function(input, output) {
   
   ## Prediction
   
-  pred <- reactiveValues(data_pred = NULL)
+  pred <- reactiveValues(data_pred = NULL, models = NULL)
   
   observeEvent(input$launch_pred, {
     
     # Recuperation des variables 
     pred$data_pred <- input$variable_pred
-    print(typeof(pred$data_pred))
+    pred$models <- input$models_pred
     
-    # DF de prédicteurs + Variable à prédire
+    # DF de prÃÂ©dicteurs + Variable ÃÂ  prÃÂ©dire
     fifa19_pred <- fifa19_init[pred$data_pred]
     target_pred <- fifa19_init$Wage
     
-    # Découpage Train / Test
-    size.data = nrow(fifa19_pred)
-    napp.pred = round(0.8*size.data)
-    indices.fifa = sample(1:size.data, napp.pred , replace=FALSE)
+    # DÃÂ©coupage Train / Test
+    size_data = nrow(fifa19_pred)
+    napp_pred = round(0.8*size_data)
+    indices_fifa = sample(1:size_data, napp_pred , replace=FALSE)
     
-    data.fifa.train = fifa19_pred[indices.fifa,]
-    data.fifa.test = fifa19_pred[-indices.fifa,]
-    wage.train = target_pred[indices.fifa]
-    wage.test = target_pred[-indices.fifa]
+    data_fifa_train = fifa19_pred[indices_fifa,]
+    data_fifa_test = fifa19_pred[-indices_fifa,]
+    wage_train = target_pred[indices_fifa]
+    wage_test = target_pred[-indices_fifa]
     
-    model.lm = lm( wage.train ~. , data=data.fifa.train)
-    wage.lm.app = as.numeric(predict(model.lm))
-    wage.lm.test = as.numeric(predict(model.lm, newdata = data.fifa.test))
+    n_col = length(input$models_pred)
     
-    model.cart.max = rpart(wage.train ~ . , control=rpart.control(cp=0), method = "anova", data = data.fifa.train)
-    wage.cart.max.app = as.numeric(predict(model.cart.max))
-    wage.cart.max.test = as.numeric(predict(model.cart.max , newdata=data.fifa.test))
+    if ( "cart" %in% pred$models ) {
+      n_col = n_col +1
+    }
     
-    Cp=model.cart.max$cptable[which.min(model.cart.max$cptable[,4]),1]
-    model.cart.opt = prune(model.cart.max, cp = Cp)
-    wage.cart.opt.app = predict(model.cart.opt)
-    wage.cart.opt.test = as.numeric(predict(model.cart.opt , newdata=data.fifa.test))
+    if ( "svr" %in% pred$models ) {
+      n_col = n_col +1
+    }
     
-    model.rf = randomForest(wage.train ~., importance=TRUE, data=data.fifa.train, ntree= 50)
-    wage.rf.app = as.numeric(predict(model.rf, newdata=data.fifa.train))
-    wage.rf.test = as.numeric(predict(model.rf, newdata=data.fifa.test))
-    #varImpPlot(model)
+    res_app = array(0,dim=c(4,n_col))
+    res_test = array(0,dim=c(4,n_col))
     
+    colnames_pred = list()
+    
+    idx_model = 1
+    
+    if ( "lm" %in% pred$models ) {
+      
+      model_lm = lm( wage_train ~. , data=data_fifa_train)
+      wage_lm_train = as.numeric(predict(model_lm))
+      wage_lm_test = as.numeric(predict(model_lm, newdata = data_fifa_test))
+      
+      colnames_pred <- append(colnames_pred, "lm")
+      
+      res_app[1,idx_model] = mae(wage_train, wage_lm_train)
+      res_app[2,idx_model] = rmse(wage_train, wage_lm_train)
+      res_app[3,idx_model] = variance_expliquee(wage_train, wage_lm_train)
+      res_app[4,idx_model] = cor(wage_train, wage_lm_train)^2
+      
+      res_test[1,idx_model] = mae(wage_test, wage_lm_test)
+      res_test[2,idx_model] = rmse(wage_test, wage_lm_test)
+      res_test[3,idx_model] = variance_expliquee(wage_test, wage_lm_test)
+      res_test[4,idx_model] = cor(wage_test, wage_lm_test)^2
+      
+      idx_model = idx_model + 1
+    }
+    
+    if ( "cart" %in% pred$models ) {
+      
+      model_cart_max = rpart(wage_train ~ . , control=rpart.control(cp=0), method = "anova", data = data_fifa_train)
+      wage_cart_max_train = as.numeric(predict(model_cart_max))
+      wage_cart_max_test = as.numeric(predict(model_cart_max , newdata=data_fifa_test))
+      
+      Cp=model_cart_max$cptable[which.min(model_cart_max$cptable[,4]),1]
+      model_cart_opt = prune(model_cart_max, cp = Cp)
+      wage_cart_opt_train = predict(model_cart_opt)
+      wage_cart_opt_test = as.numeric(predict(model_cart_opt , newdata=data_fifa_test))
+      
+      colnames_pred <- append(colnames_pred, "cart_max")
+      colnames_pred <- append(colnames_pred, "cart_opt")
+      
+      res_app[1,idx_model] = mae(wage_train, wage_cart_max_train)
+      res_app[2,idx_model] = rmse(wage_train, wage_cart_max_train)
+      res_app[3,idx_model] = variance_expliquee(wage_train, wage_cart_max_train)
+      res_app[4,idx_model] = cor(wage_train, wage_cart_max_train)^2
+      
+      res_test[1,idx_model] = mae(wage_test, wage_cart_max_test)
+      res_test[2,idx_model] = rmse(wage_test, wage_cart_max_test)
+      res_test[3,idx_model] = variance_expliquee(wage_test, wage_cart_max_test)
+      res_test[4,idx_model] = cor(wage_test, wage_cart_max_test)^2
+      
+      idx_model = idx_model + 1
+      
+      res_app[1,idx_model] = mae(wage_train, wage_cart_opt_train)
+      res_app[2,idx_model] = rmse(wage_train, wage_cart_opt_train)
+      res_app[3,idx_model] = variance_expliquee(wage_train, wage_cart_opt_train)
+      res_app[4,idx_model] = cor(wage_train, wage_cart_opt_train)^2
+      
+      res_test[1,idx_model] = mae(wage_test, wage_cart_opt_test)
+      res_test[2,idx_model] = rmse(wage_test, wage_cart_opt_test)
+      res_test[3,idx_model] = variance_expliquee(wage_test, wage_cart_opt_test)
+      res_test[4,idx_model] = cor(wage_test, wage_cart_opt_test)^2
+      
+      idx_model = idx_model + 1
+      
+      
+    }
+    
+    if ( "gam" %in% pred$models ) { 
+      
+      
+      colnames_pred <- append(colnames_pred, "gam")
+      
+      res_gam_app = array(0, dim = c(4,1))
+      res_gam_test = array(0, dim = c(4,1))
+      
+      idx_model = idx_model + 1
+      
+    }
+    
+    if ( "svr" %in% pred$models ) { 
+      
+      colnames_pred <- append(colnames_pred, "svr_lin")
+      colnames_pred <- append(colnames_pred, "svr_rad")
+      
+      res_svr_lin_app = array(0, dim = c(4,1))
+      res_svr_lin_test = array(0, dim = c(4,1))
+      
+      idx_model = idx_model + 1
+      
+      res_svr_opt_app = array(0, dim = c(4,1))
+      res_svr_opt_test = array(0, dim = c(4,1))
+      
+      idx_model = idx_model + 1
+      
+    }
+    
+    if ( "rf" %in% pred$models ) { 
+      
+      model_rf = randomForest(wage_train ~., importance=TRUE, data=data_fifa_train, ntree= 200)
+      wage_rf_train = as.numeric(predict(model_rf, newdata=data_fifa_train))
+      wage_rf_test = as.numeric(predict(model_rf, newdata=data_fifa_test))
+      
+      colnames_pred <- append(colnames_pred, "rf")
+      
+      res_app[1,idx_model] = mae(wage_train, wage_rf_train)
+      res_app[2,idx_model] = rmse(wage_train, wage_rf_train)
+      res_app[3,idx_model] = variance_expliquee(wage_train, wage_rf_train)
+      res_app[4,idx_model] = cor(wage_train, wage_rf_train)^2
+      
+      res_test[1,idx_model] = mae(wage_test, wage_rf_test)
+      res_test[2,idx_model] = rmse(wage_test, wage_rf_test)
+      res_test[3,idx_model] = variance_expliquee(wage_test, wage_rf_test)
+      res_test[4,idx_model] = cor(wage_test, wage_rf_test)^2
+      
+      idx_model = idx_model + 1
+      
+    }
+    
+    rownames(res_app) = rownames(res_test) = c("MAE", "RMSE", "Variance ExpliquÃ©e", "R2")
+    colnames(res_app) = colnames(res_test) = colnames_pred
+    
+    print(res_app)
+    print(res_test)
     
   })
   
