@@ -23,6 +23,8 @@ library(gridExtra)
 library(grid)
 library(cowplot)
 library(RColorBrewer)
+library(shinyjs)
+library(hash)
 
 variance_expliquee<- function(obs,prev)
 {
@@ -64,7 +66,7 @@ obs_prev <- function( df, obs, prev )
 
 nuage_res <- function( df, obs, prev )
 {
-  return(ggplot(df, aes( x= obs, y = obs - prev ))+
+  return(ggplot(df, aes( x= obs, y = prev - obs ))+
            geom_point(color = "darkblue" ) +
            Theme.GridPlot +
            xlab("Observés")+
@@ -73,6 +75,8 @@ nuage_res <- function( df, obs, prev )
            geom_abline(intercept = 0, slope = 0, size=0.75)
   )
 }
+
+#options(warn = -1)
 
 fifa19_init <- read.csv(file = "../final_fifa_stat.csv")
 
@@ -279,6 +283,7 @@ ui <- dashboardPage(
       
       # Prediction
       tabItem(tabName = "prediction",
+              useShinyjs(),
               fluidRow(align = "center",
                        column(12,
                               h1('Prediction de la variable "Salaire"')
@@ -306,26 +311,53 @@ ui <- dashboardPage(
                        ,
                        br(),
                        checkboxGroupInput("models_pred", 
-                                          "ModÃ¨le(s) utilisÃÂ©(s) :",
+                                          "Modele(s) utilise(s) :",
                                           choiceNames = list("Regression Lineaire Multiple","Arbre CART", "GAM", "SVR","RandomForest") ,
                                           choiceValues = c("lm","cart","gam","svr","rf")
                        )
-                       
                 )),
               fluidRow(   
                 align = "center",
-                actionButton("launch_pred", "Lancer la prÃÂ©diction")
+                actionButton("launch_pred", "Lancer la prediction")
               ),
               br(),
               fluidRow(
                 align = "center",
                 h2('Resultats de la prediction'),
                 br(),
-                plotOutput("obs_prev_test_lm", width = "70%")
-                ),
-              fluidRow( align = "center", 
-                        plotOutput("barplot_app_mae", width = "70%"), 
-                        plotOutput("barplot_app_r2", width = "70%"))
+                column(6,
+                       mainPanel( align = "left",
+                                  radioButtons("metric", 
+                                                     "Metriques",
+                                                     choiceNames = list("MAE / RMSE", "R2 / EV") ,
+                                                     choiceValues = list("mae","ev")
+                                  ),
+                                  radioButtons("set_left", 
+                                                     "Jeu",
+                                                     choiceNames = list("Entrainement", "Test") ,
+                                                     choiceValues = list("train","test")
+                                  ),
+                                  br(),
+                                  plotOutput("barplot_metrics", width = "80%")),
+                  ),
+                
+                column(6,
+                       mainPanel( align = "left",
+                                  radioButtons("model_res", 
+                                                     "Modele",
+                                                     choiceNames = list("Regression Lineaire Multiple","Arbre CART", "GAM", "SVR","RandomForest") ,
+                                                     choiceValues = c("lm","cart","gam","svr","rf")
+                                  ),
+                                  radioButtons("set_right", 
+                                                     "Jeu",
+                                                     choiceNames = list("Entrainement", "Test") ,
+                                                     choiceValues = list("train","test")
+                                  ),
+                                  br(),
+                                  plotOutput("obs_prev_lm", width = "100%"))
+                       )
+              ),
+              
                       
               ),
       
@@ -359,11 +391,12 @@ ui <- dashboardPage(
   )
 )
 
-server <- function(input, output) {
+server <- function(input, output, session) {
   age <- fifa19_final[c(2)]
   rv <- reactiveValues()
   overall <- fifa19_final[c(4)]
   over_slider <- fifa19_final[c('Overall','Age')]
+  first_pred <- TRUE
   
   create_beautiful_radarchart <- function(data,
                                           color = "#F5A42F",
@@ -402,6 +435,14 @@ server <- function(input, output) {
   })
   
   univarie <- reactiveValues()
+  
+  observe({
+    if (first_pred) 
+    { 
+      hide("obs_prev_lm")
+      hide("barplot_metrics")
+    }
+  })
   
   observe({
     if (input$choice_univar %in% names_quantitatives ) {
@@ -518,17 +559,24 @@ server <- function(input, output) {
   
   pred <- reactiveValues(data_pred = NULL, models = NULL)
   
+  res_app_global <- NULL
+  res_test_global <- NULL
+  plots_test_list_global <- NULL
+  plots_train_list_global <- NULL
+  nb_model <- NULL
+  dict_index <- NULL
+  
   observeEvent(input$launch_pred, {
     
     # Recuperation des variables 
     pred$data_pred <- input$variable_pred
     pred$models <- input$models_pred
     
-    # DF de prÃÂ©dicteurs + Variable ÃÂ  prÃÂ©dire
+    # DF de predicteurs + Variable cible
     fifa19_pred <- fifa19_init[pred$data_pred]
     target_pred <- fifa19_init$Wage
     
-    # DÃÂ©coupage Train / Test
+    # Decoupage Train / Test
     size_data = nrow(fifa19_pred)
     napp_pred = round(0.8*size_data)
     indices_fifa = sample(1:size_data, napp_pred , replace=FALSE)
@@ -554,7 +602,8 @@ server <- function(input, output) {
     
     n_plots = n_model * 2     # Pour chaque modèle : nuage observés / prédits + graphe des résidus
 
-    plots_pred_list <- list()
+    plots_test_list <- list()
+    plots_train_list <- list()
     
     res_app = matrix(0,nrow = 4, ncol = n_model)
     res_test = matrix(0,nrow = 4, ncol = n_model)
@@ -572,15 +621,19 @@ server <- function(input, output) {
       wage_lm_train = as.numeric(predict(model_lm))
       wage_lm_test = as.numeric(predict(model_lm, newdata = data_fifa_test))
       
-      colnames_pred <- append(colnames_pred, "lm")
+      colnames_pred <- append(colnames_pred, "Modele Linéaire")
       
       res_app <- store_results( res_app, idx_model, wage_train, wage_lm_train ) 
       res_test <- store_results( res_test, idx_model, wage_test, wage_lm_test )
 
+      residus_train = cbind( residus_train, wage_lm_train)
       residus_test = cbind( residus_test, wage_lm_test)
       
-      plots_pred_list[[(2*idx_model) - 1 ]] <- obs_prev(residus_test, wage_test, wage_lm_test )
-      plots_pred_list[[2*idx_model ]] <- nuage_res(residus_test, wage_test, wage_lm_test )
+      plots_train_list[[(2*idx_model) - 1 ]] <- obs_prev(residus_train, wage_train, wage_lm_train )
+      plots_train_list[[2*idx_model ]] <- nuage_res(residus_train, wage_train, wage_lm_train )
+      
+      plots_test_list[[(2*idx_model) - 1 ]] <- obs_prev(residus_test, wage_test, wage_lm_test )
+      plots_test_list[[2*idx_model ]] <- nuage_res(residus_test, wage_test, wage_lm_test )
       
       idx_model = idx_model + 1
       
@@ -597,26 +650,34 @@ server <- function(input, output) {
       wage_cart_opt_train = predict(model_cart_opt)
       wage_cart_opt_test = as.numeric(predict(model_cart_opt , newdata=data_fifa_test))
       
-      colnames_pred <- append(colnames_pred, "cart_max")
-      colnames_pred <- append(colnames_pred, "cart_opt")
+      colnames_pred <- append(colnames_pred, "Arbre CART Max")
+      colnames_pred <- append(colnames_pred, "Arbre CART Optimal")
       
       res_app <- store_results( res_app, idx_model, wage_train, wage_cart_max_train ) 
       res_test <- store_results( res_test, idx_model, wage_test, wage_cart_max_test )
       
+      residus_train = cbind( residus_train, wage_cart_max_train)
       residus_test = cbind( residus_test, wage_cart_max_test)
       
-      plots_pred_list[[(2*idx_model) - 1 ]] <- obs_prev(residus_test, wage_test, wage_cart_max_test )
-      plots_pred_list[[2*idx_model ]] <- nuage_res(residus_test, wage_test, wage_cart_max_test )
+      plots_train_list[[(2*idx_model) - 1 ]] <- obs_prev(residus_train, wage_train, wage_cart_max_train )
+      plots_train_list[[2*idx_model ]] <- nuage_res(residus_train, wage_train, wage_cart_max_train )
+      
+      plots_test_list[[(2*idx_model) - 1 ]] <- obs_prev(residus_test, wage_test, wage_cart_max_test )
+      plots_test_list[[2*idx_model ]] <- nuage_res(residus_test, wage_test, wage_cart_max_test )
       
       idx_model = idx_model + 1
       
       res_app <- store_results( res_app, idx_model, wage_train, wage_cart_opt_train ) 
       res_test <- store_results( res_test, idx_model, wage_test, wage_cart_opt_test )
       
+      residus_train = cbind( residus_train, wage_cart_opt_train)
       residus_test = cbind( residus_test, wage_cart_opt_test)
       
-      plots_pred_list[[(2*idx_model) - 1 ]] <- obs_prev(residus_test, wage_test, wage_cart_opt_test )
-      plots_pred_list[[2*idx_model ]] <- nuage_res(residus_test, wage_test, wage_cart_opt_test )
+      plots_train_list[[(2*idx_model) - 1 ]] <- obs_prev(residus_train, wage_train, wage_cart_opt_train )
+      plots_train_list[[2*idx_model ]] <- nuage_res(residus_train, wage_train, wage_cart_opt_train )
+      
+      plots_test_list[[(2*idx_model) - 1 ]] <- obs_prev(residus_test, wage_test, wage_cart_opt_test )
+      plots_test_list[[2*idx_model ]] <- nuage_res(residus_test, wage_test, wage_cart_opt_test )
 
       idx_model = idx_model + 1
     
@@ -625,7 +686,7 @@ server <- function(input, output) {
     if ( "gam" %in% pred$models ) { 
       
       
-      colnames_pred <- append(colnames_pred, "gam")
+      colnames_pred <- append(colnames_pred, "GAM")
 
       gam_formula = "wage_train ~ "
       
@@ -655,15 +716,17 @@ server <- function(input, output) {
       wage_gam_train = predict(model_gam)
       wage_gam_test = predict(model_gam, newdata=data_fifa_test)
       
-      #colnames_pred <- append(colnames_pred, "gam")
-      
       res_app <- store_results( res_app, idx_model, wage_train, wage_gam_train ) 
       res_test <- store_results( res_test, idx_model, wage_test, wage_gam_test )
       
+      residus_train = cbind( residus_train, wage_gam_train)
       residus_test = cbind( residus_test, wage_gam_test)
       
-      plots_pred_list[[(2*idx_model) - 1 ]] <- obs_prev(residus_test, wage_test, wage_gam_test )
-      plots_pred_list[[2*idx_model ]] <- nuage_res(residus_test, wage_test, wage_gam_test )
+      plots_train_list[[(2*idx_model) - 1 ]] <- obs_prev(residus_train, wage_train, wage_gam_train )
+      plots_train_list[[2*idx_model ]] <- nuage_res(residus_train, wage_train, wage_gam_train )
+      
+      plots_test_list[[(2*idx_model) - 1 ]] <- obs_prev(residus_test, wage_test, wage_gam_test )
+      plots_test_list[[2*idx_model ]] <- nuage_res(residus_test, wage_test, wage_gam_test )
       
       idx_model = idx_model + 1
 
@@ -677,8 +740,8 @@ server <- function(input, output) {
       data_fifa_train_svr = fifa19_pred_svr[indices_fifa,]
       data_fifa_test_svr = fifa19_pred_svr[-indices_fifa,] 
       
-      colnames_pred <- append(colnames_pred, "svr_lin")
-      colnames_pred <- append(colnames_pred, "svr_rad")
+      colnames_pred <- append(colnames_pred, "SVR Noyau Linéaire")
+      colnames_pred <- append(colnames_pred, "SVR Noyau Radial")
       
       model_svr_lin = svm(formula = wage_train ~ ., data = data_fifa_train_svr, epsilon = 0.025, cost=10,type = "eps-regression", kernel="linear")
       model_svr_rad = svm(formula = wage_train ~ ., data = data_fifa_train_svr, epsilon = 0.025, cost=10,type = "eps-regression", kernel="radial")
@@ -689,10 +752,14 @@ server <- function(input, output) {
       res_app <- store_results( res_app, idx_model, wage_train, wage_svr_lin_train ) 
       res_test <- store_results( res_test, idx_model, wage_test, wage_svr_lin_test )
       
+      residus_train = cbind( residus_train, wage_svr_lin_train)
       residus_test = cbind( residus_test, wage_svr_lin_test)
       
-      plots_pred_list[[(2*idx_model) - 1 ]] <- obs_prev(residus_test, wage_test, wage_svr_lin_test )
-      plots_pred_list[[2*idx_model ]] <- nuage_res(residus_test, wage_test, wage_svr_lin_test )
+      plots_train_list[[(2*idx_model) - 1 ]] <- obs_prev(residus_train, wage_train, wage_svr_lin_train )
+      plots_train_list[[2*idx_model ]] <- nuage_res(residus_train, wage_train, wage_svr_lin_train )
+      
+      plots_test_list[[(2*idx_model) - 1 ]] <- obs_prev(residus_test, wage_test, wage_svr_lin_test )
+      plots_test_list[[2*idx_model ]] <- nuage_res(residus_test, wage_test, wage_svr_lin_test )
        
       idx_model = idx_model + 1
       
@@ -702,10 +769,14 @@ server <- function(input, output) {
       res_app <- store_results( res_app, idx_model, wage_train, wage_svr_rad_train ) 
       res_test <- store_results( res_test, idx_model, wage_test, wage_svr_rad_test )
       
+      residus_train = cbind( residus_train, wage_svr_rad_train)
       residus_test = cbind( residus_test, wage_svr_rad_test)
       
-      plots_pred_list[[(2*idx_model) - 1 ]] <- obs_prev(residus_test, wage_test, wage_svr_rad_test )
-      plots_pred_list[[2*idx_model ]] <- nuage_res(residus_test, wage_test, wage_svr_rad_test )
+      plots_train_list[[(2*idx_model) - 1 ]] <- obs_prev(residus_train, wage_train, wage_svr_rad_train )
+      plots_train_list[[2*idx_model ]] <- nuage_res(residus_train, wage_train, wage_svr_rad_train )
+      
+      plots_test_list[[(2*idx_model) - 1 ]] <- obs_prev(residus_test, wage_test, wage_svr_rad_test )
+      plots_test_list[[2*idx_model ]] <- nuage_res(residus_test, wage_test, wage_svr_rad_test )
        
       idx_model = idx_model + 1
       
@@ -717,33 +788,97 @@ server <- function(input, output) {
       wage_rf_train = as.numeric(predict(model_rf, newdata=data_fifa_train))
       wage_rf_test = as.numeric(predict(model_rf, newdata=data_fifa_test))
       
-      colnames_pred <- append(colnames_pred, "rf")
+      colnames_pred <- append(colnames_pred, "RandomForest")
 
       res_app <- store_results( res_app, idx_model, wage_train, wage_rf_train ) 
       res_test <- store_results( res_test, idx_model, wage_test, wage_rf_test )
       
+      residus_train = cbind( residus_train, wage_rf_train)
       residus_test = cbind( residus_test, wage_rf_test)
       
-      plots_pred_list[[(2*idx_model) - 1 ]] <- obs_prev(residus_test, wage_test, wage_rf_test )
-      plots_pred_list[[2*idx_model ]] <- nuage_res(residus_test, wage_test, wage_rf_test )
+      plots_train_list[[(2*idx_model) - 1 ]] <- obs_prev(residus_train, wage_train, wage_rf_train )
+      plots_train_list[[2*idx_model ]] <- nuage_res(residus_train, wage_train, wage_rf_train )
+      
+      plots_test_list[[(2*idx_model) - 1 ]] <- obs_prev(residus_test, wage_test, wage_rf_test )
+      plots_test_list[[2*idx_model ]] <- nuage_res(residus_test, wage_test, wage_rf_test )
       
       idx_model = idx_model + 1
       
     }
     
-    dimnames(res_app) = dimnames(res_test) = list(c("MAE", "RMSE", "Variance Expliquee", "R2"),colnames_pred)
+    updateRadioButtons( 
+      session, "model_res",
+      label = "Modele",
+      choices = colnames_pred
+    )
     
+    dimnames(res_app) = dimnames(res_test) = list(c("MAE", "RMSE", "Variance Expliquee", "R2"),colnames_pred)
+  
     res_app = t(res_app)
     res_test = t(res_test)
     
-    colors_barplot = brewer.pal(n = n_model, name = "Spectral")
+    first_pred <<- FALSE
+    
+    res_app_global <<- res_app
+    res_test_global <<- res_test
+    plots_train_list_global <<- plots_train_list
+    plots_test_list_global <<- plots_test_list
+    nb_model <<- n_model
+    dict_index <<- hash( colnames_pred, 1:length(colnames_pred))
 
-    output$barplot_app_mae <- renderPlot(barplot(res_app[,1:2], beside = T, col = colors_barplot ))
-    output$barplot_app_r2 <- renderPlot(barplot(res_app[,3:4], beside = T, col = colors_barplot ))
-    
-    output$obs_prev_test_lm <- renderPlot( plot_grid(plotlist = plots_pred_list, ncol = 2), height = function(){200*n_plots})
-    
+    output$barplot_metrics <- renderPlot(barplot(res_app[,1:2], beside = T, col = brewer.pal(n = n_model, name = "Spectral")), width = 700)
+    output$obs_prev_lm <- renderPlot( plot_grid(plotlist = plots_train_list[1:2], ncol = 2), width = 750) 
+
+    show("obs_prev_lm")
+    show("barplot_metrics")
   })
+  
+  
+  observeEvent({input$metric
+               input$set_left}, { 
+                 if (input$metric == "ev")
+                 { if (input$set_left == "train")
+                   {
+                   output$barplot_metrics <- renderPlot(barplot(res_app_global[,3:4], beside = T, col = brewer.pal(n = nb_model, name = "Spectral")), width = 700)
+                   }
+                   else
+                   {
+                   output$barplot_metrics <- renderPlot(barplot(res_test_global[,3:4], beside = T, col = brewer.pal(n = nb_model, name = "Spectral")), width = 700)    
+                   }
+                 }
+                 else
+                 { if (input$set_left == "train")
+                   {
+                   output$barplot_metrics <- renderPlot(barplot(res_app_global[,1:2], beside = T, col = brewer.pal(n = nb_model, name = "Spectral")), width = 700)
+                   }
+                   else
+                   {
+                   output$barplot_metrics <- renderPlot(barplot(res_test_global[,1:2], beside = T, col = brewer.pal(n = nb_model, name = "Spectral")), width = 700)
+                   }
+                 }
+              } )
+  
+  observeEvent({input$model_res
+                input$set_right},
+               {
+                 # if (!first_pred)
+                 #   {
+                 #     print(typeof(input$model_res))
+                 #     print(typeof(toString(input$model_res)))
+                 #     print(input$model_res)
+                 #   }
+                 
+                 if (input$set_right == "train")
+                 {
+                   output$obs_prev_lm <- renderPlot( plot_grid(plotlist = plots_train_list_global[(2*dict_index[[input$model_res]]-1) :(2*dict_index[[input$model_res]])], ncol = 2), width = 750)
+                 }
+                 else
+                 {
+                   output$obs_prev_lm <- renderPlot( plot_grid(plotlist = plots_test_list_global[(2*dict_index[[input$model_res]]-1) :(2*dict_index[[input$model_res]])], ncol = 2), width = 750)
+                 }
+
+               }
+               )
   
   output$distPlot2 <- renderPlot({
     updated_data <- over_slider[over_slider$Overall>=input$overall[1]&over_slider$Overall<=input$overall[2],]
