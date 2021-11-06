@@ -25,6 +25,7 @@ library(cowplot)
 library(RColorBrewer)
 library(shinyjs)
 library(hash)
+library(plyr)
 
 variance_expliquee<- function(obs,prev)
 {
@@ -34,8 +35,8 @@ variance_expliquee<- function(obs,prev)
 
 store_results <- function( res, idx_model, obs, pred ) 
 {
-  res[1,idx_model] = mae(obs, pred)
-  res[2,idx_model] = rmse(obs, pred)
+  res[1,idx_model] = rmse(obs, pred)
+  res[2,idx_model] = mae(obs, pred)
   res[3,idx_model] = variance_expliquee(obs, pred)
   res[4,idx_model] = cor(obs, pred)^2
   
@@ -329,16 +330,14 @@ ui <- dashboardPage(
                        mainPanel( align = "left",
                                   radioButtons("metric", 
                                                      "Metriques",
-                                                     choiceNames = list("MAE / RMSE", "R2 / EV") ,
+                                                     choiceNames = list("RMSE / MAE", "R2 / EV") ,
                                                      choiceValues = list("mae","ev")
                                   ),
                                   radioButtons("set_left", 
                                                      "Jeu",
                                                      choiceNames = list("Entrainement", "Test") ,
                                                      choiceValues = list("train","test")
-                                  ),
-                                  br(),
-                                  plotOutput("barplot_metrics", width = "80%")),
+                                  ))
                   ),
                 
                 column(6,
@@ -346,17 +345,24 @@ ui <- dashboardPage(
                                   radioButtons("model_res", 
                                                      "Modele",
                                                      choiceNames = list("Regression Lineaire Multiple","Arbre CART", "GAM", "SVR","RandomForest") ,
-                                                     choiceValues = c("lm","cart","gam","svr","rf")
+                                                     choiceValues = c("lm","cart","gam","svr","rf"),
+                                                     inline = TRUE
                                   ),
                                   radioButtons("set_right", 
                                                      "Jeu",
                                                      choiceNames = list("Entrainement", "Test") ,
                                                      choiceValues = list("train","test")
-                                  ),
-                                  br(),
-                                  plotOutput("obs_prev_lm", width = "100%"))
+                                  )
+                                  )
                        )
               ),
+              fluidRow(
+                column(6,
+                       mainPanel(plotOutput("barplot_metrics", width = "80%"))),
+                column(6,
+                       mainPanel(plotOutput("obs_prev_lm", width = "100%"))
+                       )
+                )
               
                       
               ),
@@ -565,6 +571,7 @@ server <- function(input, output, session) {
   plots_train_list_global <- NULL
   nb_model <- NULL
   dict_index <- NULL
+  col_mae <<- NULL
   
   observeEvent(input$launch_pred, {
     
@@ -809,10 +816,11 @@ server <- function(input, output, session) {
     updateRadioButtons( 
       session, "model_res",
       label = "Modele",
-      choices = colnames_pred
+      choices = colnames_pred,
+      inline = TRUE
     )
     
-    dimnames(res_app) = dimnames(res_test) = list(c("MAE", "RMSE", "Variance Expliquee", "R2"),colnames_pred)
+    dimnames(res_app) = dimnames(res_test) = list(c("RMSE", "MAE", "Variance Expliquee", "R2"),colnames_pred)
   
     res_app = t(res_app)
     res_test = t(res_test)
@@ -825,8 +833,17 @@ server <- function(input, output, session) {
     plots_test_list_global <<- plots_test_list
     nb_model <<- n_model
     dict_index <<- hash( colnames_pred, 1:length(colnames_pred))
+    col_mae <<- brewer.pal(n = n_model, name = "Spectral")
 
-    output$barplot_metrics <- renderPlot(barplot(res_app[,1:2], beside = T, col = brewer.pal(n = n_model, name = "Spectral")), width = 700)
+    output$barplot_metrics <- renderPlot(
+      barplot(res_app[,1:2], 
+              beside = T, 
+              ylim=c(0,round_any(max(res_test[,1]), 2000)),
+              col = brewer.pal(n = n_model, name = "Spectral") ,
+              legend.text = colnames_pred,
+              args.legend = list(x = "topright" ) # , inset = 0.05
+              ), width = 700)
+
     output$obs_prev_lm <- renderPlot( plot_grid(plotlist = plots_train_list[1:2], ncol = 2), width = 750) 
 
     show("obs_prev_lm")
@@ -836,24 +853,52 @@ server <- function(input, output, session) {
   
   observeEvent({input$metric
                input$set_left}, { 
-                 if (input$metric == "ev")
+                 if (input$metric == "mae")
                  { if (input$set_left == "train")
                    {
-                   output$barplot_metrics <- renderPlot(barplot(res_app_global[,3:4], beside = T, col = brewer.pal(n = nb_model, name = "Spectral")), width = 700)
+                   output$barplot_metrics <- renderPlot(
+                     barplot(res_app_global[,1:2],
+                             beside = T,
+                             ylim=c(0,round_any(max(res_test_global[,1]), 2000)),
+                             col = col_mae,
+                             legend.text = rownames(res_app_global),
+                             args.legend = list(x = "topright") 
+                     ), width = 700)
                    }
                    else
                    {
-                   output$barplot_metrics <- renderPlot(barplot(res_test_global[,3:4], beside = T, col = brewer.pal(n = nb_model, name = "Spectral")), width = 700)    
+                     output$barplot_metrics <- renderPlot(
+                       barplot(res_test_global[,1:2],
+                               beside = T,
+                               ylim=c(0,round_any(max(res_test_global[,1]), 2000)),
+                               col = col_mae,
+                               legend.text = rownames(res_test_global),
+                               args.legend = list(x = "topright" )
+                       ), width = 700)
                    }
                  }
                  else
                  { if (input$set_left == "train")
                    {
-                   output$barplot_metrics <- renderPlot(barplot(res_app_global[,1:2], beside = T, col = brewer.pal(n = nb_model, name = "Spectral")), width = 700)
+                   output$barplot_metrics <- renderPlot(
+                     barplot(res_app_global[,3:4],
+                             beside = T,
+                             col = col_mae,
+                             ylim=c(0,1),
+                             legend.text = rownames(res_app_global),
+                             args.legend = list(x = "top", horiz= TRUE, cex = 0.7 ) 
+                             ), width = 700)
                    }
                    else
                    {
-                   output$barplot_metrics <- renderPlot(barplot(res_test_global[,1:2], beside = T, col = brewer.pal(n = nb_model, name = "Spectral")), width = 700)
+                     output$barplot_metrics <- renderPlot(
+                       barplot(res_test_global[,3:4],
+                               beside = T,
+                               col = col_mae,
+                               ylim=c(0,1),
+                               legend.text = rownames(res_test_global),
+                               args.legend = list(x = "top", horiz= TRUE, cex = 0.7 )
+                       ), width = 700)
                    }
                  }
               } )
@@ -861,13 +906,6 @@ server <- function(input, output, session) {
   observeEvent({input$model_res
                 input$set_right},
                {
-                 # if (!first_pred)
-                 #   {
-                 #     print(typeof(input$model_res))
-                 #     print(typeof(toString(input$model_res)))
-                 #     print(input$model_res)
-                 #   }
-                 
                  if (input$set_right == "train")
                  {
                    output$obs_prev_lm <- renderPlot( plot_grid(plotlist = plots_train_list_global[(2*dict_index[[input$model_res]]-1) :(2*dict_index[[input$model_res]])], ncol = 2), width = 750)
@@ -876,7 +914,6 @@ server <- function(input, output, session) {
                  {
                    output$obs_prev_lm <- renderPlot( plot_grid(plotlist = plots_test_list_global[(2*dict_index[[input$model_res]]-1) :(2*dict_index[[input$model_res]])], ncol = 2), width = 750)
                  }
-
                }
                )
   
