@@ -136,6 +136,7 @@ fifa19_pred_quantitatives <-
 fifa19_pred_qualitatives <-
   as.data.frame(fifa19_pred[unlist(names_qualitatives)])
 fifa19_mapdata <- fifa19_init[c("Age","Overall","Potential","Value","Wage","Contract.Valid.Until","Height","Weight","Release.Clause")]
+fifa19_withOutAge <- fifa19_mapdata[-c(1)]
 
 name_player <- fifa19_final[c(1)]
 name_player <- head(name_player, 25)
@@ -197,7 +198,7 @@ if (interactive()) {
                 useShinyjs(),
                 width = 3,
                 h2("Statistiques des joueurs", align = "center"),
-                p("Visualisez les stats de 1 a 5 joueur en simultane", align = "center"),
+                p("Visualisez les stats de 1 a 5 joueur simultanement", align = "center"),
                 shiny::selectInput(
                   inputId = "dataset_players",
                   label = "Select Player",
@@ -229,9 +230,10 @@ if (interactive()) {
               mainPanel(
                 h1("Introduction"),
                 p(
-                  "Ce projet Shiny presente ",
-                  em("incredibly easy "),
-                  "to build interactive web applications with R."
+                  "Ce projet Shiny analyse un dataset du celebre jeu de football FIFA19.",
+                  #em("incredibly easy "),
+                  p(),
+                  "Vous trouverez plusieurs parties permettant d'analyser les statistiques des joueurs et une partie permettant de faire de la prediction"
                 ),
                 br(),
                 fluidRow(plotOutput(outputId = "distPlot"))
@@ -281,7 +283,7 @@ if (interactive()) {
                 shiny::selectInput(
                   inputId = "select_uni",
                   label = "Variable X",
-                  choices = colnames(fifa19_mapdata)
+                  choices = colnames(fifa19_withOutAge)
                 ),
                 sliderInput(
                   inputId = "uni_slider",
@@ -291,18 +293,14 @@ if (interactive()) {
                   value = c(25, 35)
                 ),
                 shiny::selectInput(
-                  inputId = "select_uni_y",
-                  label = "Variable y",
-                  choices = colnames(fifa19_mapdata)
-                ),
-                shiny::selectInput(
                   inputId = "choice_univar",
-                  label = " variable ",
+                  label = " Variable ",
                   choices = colnames(fifa19_bivarie)
                 )
               ),
               
               mainPanel(
+                titlePanel("Panel de visualisation"),
                 fluidRow(plotOutput(outputId = "distPlot4")),
                 fluidRow(plotOutput(outputId = "distPlot2")),
                 fluidRow(plotOutput(outputId = "distPlot5"))
@@ -509,7 +507,6 @@ if (interactive()) {
         updateSliderInput(session, "uni_slider", label = val, value = c((my_min+my_max/2)-2, (my_min+my_max/2)+2),
                           min = my_min, max = my_max)
         get_uni$key <- val
-        get_uni$y <- input$select_uni_y
         
       })
       
@@ -1079,15 +1076,13 @@ if (interactive()) {
       
       output$distPlot4 <- renderPlot({
         element <- get_uni$key
-        ele_y <- get_uni$y
         new_plot <- fifa19_final[fifa19_final[[element]] >= input$uni_slider[1] &
                                    fifa19_final[[element]] <= input$uni_slider[2], ]
         plot(
           new_plot[[element]],
-          new_plot[[ele_y]],
-          xlab = "Overall",
-          ylab = "Age of player",
-          main = "test"
+          new_plot[["Age"]],
+          xlab = element,
+          ylab = "Age of player"
         )
       })
       
@@ -1114,7 +1109,6 @@ if (interactive()) {
                                     catMethod = "categorical",
                                     missingCountryCol = "white",
                                     colourPalette="palette",
-                                    addLegend = F,
                                     mapTitle = "Repartition des joueurs dans le monde",
                                     border = NA)
         
