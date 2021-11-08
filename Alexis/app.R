@@ -992,8 +992,6 @@ if (interactive()) {
         
         if ( n_model > 2) {
           col_mae <<- brewer.pal(n = n_model, name = "Spectral")
-          print(col_mae)
-          print(typeof(col_mae))
         }
         else {
           col_mae <<- c("#D7191C","#FDAE61")[1:n_model]
