@@ -35,8 +35,8 @@ variance_expliquee <- function(obs, prev)
 
 store_results <- function(res, idx_model, obs, pred)
 {
-  res[1, idx_model] = mae(obs, pred)
-  res[2, idx_model] = rmse(obs, pred)
+  res[1, idx_model] = rmse(obs, pred)
+  res[2, idx_model] = mae(obs, pred)
   res[3, idx_model] = variance_expliquee(obs, pred)
   res[4, idx_model] = cor(obs, pred) ^ 2
   
@@ -407,7 +407,7 @@ if (interactive()) {
                   ),
                   fluidRow(
                     column(6,
-                           mainPanel(plotOutput("barplot_metrics", width = "80%"))),
+                           mainPanel(plotOutput("barplot_metrics", width = "100%"))),
                     column(6,
                            mainPanel(plotOutput("obs_prev_lm", width = "100%"))
                     )
@@ -989,19 +989,27 @@ if (interactive()) {
         plots_test_list_global <<- plots_test_list
         nb_model <<- n_model
         dict_index <<- hash( colnames_pred, 1:length(colnames_pred))
-        col_mae <<- brewer.pal(n = n_model, name = "Spectral")
+        
+        if ( n_model > 2) {
+          col_mae <<- brewer.pal(n = n_model, name = "Spectral")
+          print(col_mae)
+          print(typeof(col_mae))
+        }
+        else {
+           col_mae <<- c("#D7191C","#FDAE61")[1:n_model]
+        }
         
         output$barplot_metrics <- renderPlot(
           barplot(res_app[,1:2], 
                   beside = T, 
                   ylim=c(0,round_any(max(res_test[,1]), 2000)),
-                  col = brewer.pal(n = n_model, name = "Spectral") ,
+                  col = col_mae ,
                   legend.text = colnames_pred,
                   args.legend = list(x = "topright" ) # , inset = 0.05
-          ), width = 700)
+          ), width = 750)  
         
-        output$obs_prev_lm <- renderPlot( plot_grid(plotlist = plots_train_list[1:2], ncol = 2), width = 750) 
-        
+        output$obs_prev_lm <- renderPlot( plot_grid(plotlist = plots_train_list[1:2], ncol = 2), width = 750)  # 
+
         show("obs_prev_lm")
         show("barplot_metrics")
       })
@@ -1019,7 +1027,7 @@ if (interactive()) {
                       col = col_mae,
                       legend.text = rownames(res_app_global),
                       args.legend = list(x = "topright") 
-              ), width = 700)
+              ), width = 750) 
           }
             else
             {
@@ -1030,7 +1038,7 @@ if (interactive()) {
                         col = col_mae,
                         legend.text = rownames(res_test_global),
                         args.legend = list(x = "topright" )
-                ), width = 700)
+                ), width = 750) 
             }
           }
           else
@@ -1043,7 +1051,7 @@ if (interactive()) {
                       ylim=c(0,1),
                       legend.text = rownames(res_app_global),
                       args.legend = list(x = "top", horiz= TRUE, cex = 0.7 ) 
-              ), width = 700)
+              ), width = 750) 
           }
             else
             {
@@ -1054,7 +1062,7 @@ if (interactive()) {
                         ylim=c(0,1),
                         legend.text = rownames(res_test_global),
                         args.legend = list(x = "top", horiz= TRUE, cex = 0.7 )
-                ), width = 700)
+                ),  width = 750)
             }
           }
         } )
@@ -1064,13 +1072,14 @@ if (interactive()) {
         {
           if (input$set_right == "train")
           {
-            output$obs_prev_lm <- renderPlot( plot_grid(plotlist = plots_train_list_global[(2*dict_index[[input$model_res]]-1) :(2*dict_index[[input$model_res]])], ncol = 2), width = 750)
+            output$obs_prev_lm <- renderPlot( plot_grid(plotlist = plots_train_list_global[(2*dict_index[[input$model_res]]-1) :(2*dict_index[[input$model_res]])], ncol = 2) , width = 750)  
           }
           else
           {
-            output$obs_prev_lm <- renderPlot( plot_grid(plotlist = plots_test_list_global[(2*dict_index[[input$model_res]]-1) :(2*dict_index[[input$model_res]])], ncol = 2), width = 750)
+            output$obs_prev_lm <- renderPlot( plot_grid(plotlist = plots_test_list_global[(2*dict_index[[input$model_res]]-1) :(2*dict_index[[input$model_res]])], ncol = 2) , width = 750) 
           }
         }
+        
       )
       
       
